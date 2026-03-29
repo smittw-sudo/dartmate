@@ -52,6 +52,54 @@ export function applyHits(
   };
 }
 
+/** Returns up to `count` open (unclosed) targets for playerId, starting from their current target. */
+export function getOpenTargets(
+  state: ActiveGameState,
+  playerId: string,
+  count: number,
+): CricketTarget[] {
+  const progress = getCricketProgress(state, playerId);
+  const open: CricketTarget[] = [];
+  for (const target of CRICKET_TARGETS) {
+    const key = target === 'bull' ? 'bull' : target;
+    if ((progress[key] ?? 0) < REQUIRED_HITS) {
+      open.push(target);
+      if (open.length >= count) break;
+    }
+  }
+  return open;
+}
+
+/** Apply hits to multiple targets in one visit. Hits are capped at REQUIRED_HITS per target. */
+export function applyMultiTargetHits(
+  state: ActiveGameState,
+  playerId: string,
+  entries: { target: CricketTarget; hits: number }[],
+): ActiveGameState {
+  const playerProgress = { ...(state.cricketProgress?.[playerId] ?? {}) };
+
+  for (const { target, hits } of entries) {
+    if (hits <= 0) continue;
+    const key = target === 'bull' ? 'bull' : target;
+    const current = playerProgress[key] ?? 0;
+    playerProgress[key] = Math.min(current + hits, REQUIRED_HITS);
+  }
+
+  const newProgress = {
+    ...(state.cricketProgress ?? {}),
+    [playerId]: playerProgress,
+  };
+
+  const nextIdx = (state.currentPlayerIndex + 1) % state.playerIds.length;
+
+  return {
+    ...state,
+    cricketProgress: newProgress,
+    currentPlayerIndex: nextIdx,
+    currentVisitDarts: [],
+  };
+}
+
 export function isCricketGameComplete(state: ActiveGameState): { complete: boolean; winnerId: string | null } {
   for (const playerId of state.playerIds) {
     const progress = state.cricketProgress?.[playerId] ?? {};

@@ -90,6 +90,70 @@ export function getStandings(
     );
 }
 
+/** Ranglijst voor cricket-potjes */
+export function getCricketStandings(
+  games: GameRecord[],
+  playerIds: string[],
+): StandingsRow[] {
+  const cricket = games.filter(g => g.gameType === 'cricket' && g.isComplete && g.playerIds.length >= 2);
+
+  return playerIds
+    .map(pid => {
+      const pg = cricket.filter(g => g.playerIds.includes(pid));
+      const wins = pg.filter(g => g.winnerId === pid).length;
+      const draws = pg.filter(g => g.winnerId === null).length;
+      const losses = pg.length - wins - draws;
+      return {
+        playerId: pid,
+        gamesPlayed: pg.length,
+        wins,
+        losses,
+        draws,
+        winPct: pg.length > 0 ? Math.round((wins / pg.length) * 1000) / 10 : 0,
+        average: 0, // not applicable for cricket
+      };
+    })
+    .filter(r => r.gamesPlayed > 0)
+    .sort((a, b) => b.wins - a.wins || b.winPct - a.winPct);
+}
+
+/** Cricket H2H matchups — no averages/best-leg since cricket doesn't track those */
+export function getCricketH2HRecords(
+  games: GameRecord[],
+  playerIds: string[],
+): H2HRecord[] {
+  const cricket = games.filter(g => g.gameType === 'cricket' && g.isComplete);
+  const records: H2HRecord[] = [];
+
+  for (let i = 0; i < playerIds.length; i++) {
+    for (let j = i + 1; j < playerIds.length; j++) {
+      const p1 = playerIds[i];
+      const p2 = playerIds[j];
+      const h2h = cricket.filter(g => g.playerIds.includes(p1) && g.playerIds.includes(p2));
+      if (h2h.length === 0) continue;
+
+      const p1w = h2h.filter(g => g.winnerId === p1).length;
+      const p2w = h2h.filter(g => g.winnerId === p2).length;
+      const sorted = [...h2h].sort((a, b) => b.date.localeCompare(a.date));
+
+      records.push({
+        player1Id: p1,
+        player2Id: p2,
+        gamesPlayed: h2h.length,
+        player1Wins: p1w,
+        player2Wins: p2w,
+        player1Avg: 0,
+        player2Avg: 0,
+        player1BestLeg: 0,
+        player2BestLeg: 0,
+        lastPlayed: sorted[0]?.date ?? '',
+      });
+    }
+  }
+
+  return records.sort((a, b) => b.gamesPlayed - a.gamesPlayed);
+}
+
 /** Alle unieke 1-op-1 matchups uit de spellenlijst */
 export function getH2HRecords(
   games: GameRecord[],

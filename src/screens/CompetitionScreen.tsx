@@ -5,10 +5,10 @@ import { ArrowLeft, ChevronDown, ChevronUp, Trophy, Swords, TrendingUp } from 'l
 import { useHistory } from '../hooks/useHistory';
 import { useAppStore } from '../store/appStore';
 import { PlayerAvatar } from '../components/ui/PlayerAvatar';
-import { getStandings, getH2HRecords, H2HRecord } from '../engine/h2hEngine';
+import { getStandings, getH2HRecords, getCricketStandings, getCricketH2HRecords, H2HRecord } from '../engine/h2hEngine';
 import { PlayerProfile } from '../data/types';
 
-type Tab = 'ranglijst' | 'duels';
+type Tab = 'ranglijst' | 'duels' | 'cricket';
 
 function Medal({ rank }: { rank: number }) {
   if (rank === 1) return <span className="text-lg">🥇</span>;
@@ -17,7 +17,7 @@ function Medal({ rank }: { rank: number }) {
   return <span className="text-text-secondary text-sm font-bold w-6 text-center">{rank}</span>;
 }
 
-function H2HCard({ record, players }: { record: H2HRecord; players: PlayerProfile[] }) {
+function H2HCard({ record, players, hideSuffix = false }: { record: H2HRecord; players: PlayerProfile[]; hideSuffix?: boolean }) {
   const [expanded, setExpanded] = useState(false);
   const p1 = players.find(p => p.id === record.player1Id);
   const p2 = players.find(p => p.id === record.player2Id);
@@ -87,20 +87,22 @@ function H2HCard({ record, players }: { record: H2HRecord; players: PlayerProfil
             className="overflow-hidden border-t border-surface2"
           >
             <div className="px-4 py-3 space-y-2">
-              {/* Averages */}
-              <div className="flex justify-between text-sm">
-                <div className="text-left">
-                  <span className="text-accent font-bold">{record.player1Avg.toFixed(1)}</span>
-                  <span className="text-text-secondary ml-1 text-xs">gem.</span>
+              {/* Averages — only for X01 */}
+              {!hideSuffix && (
+                <div className="flex justify-between text-sm">
+                  <div className="text-left">
+                    <span className="text-accent font-bold">{record.player1Avg.toFixed(1)}</span>
+                    <span className="text-text-secondary ml-1 text-xs">gem.</span>
+                  </div>
+                  <span className="text-text-secondary text-xs self-center">3-pijl gemiddelde</span>
+                  <div className="text-right">
+                    <span className="text-text-secondary ml-1 text-xs">gem.</span>
+                    <span className="text-accent font-bold ml-1">{record.player2Avg.toFixed(1)}</span>
+                  </div>
                 </div>
-                <span className="text-text-secondary text-xs self-center">3-pijl gemiddelde</span>
-                <div className="text-right">
-                  <span className="text-text-secondary ml-1 text-xs">gem.</span>
-                  <span className="text-accent font-bold ml-1">{record.player2Avg.toFixed(1)}</span>
-                </div>
-              </div>
-              {/* Best leg */}
-              {(record.player1BestLeg > 0 || record.player2BestLeg > 0) && (
+              )}
+              {/* Best leg — only for X01 */}
+              {!hideSuffix && (record.player1BestLeg > 0 || record.player2BestLeg > 0) && (
                 <div className="flex justify-between text-sm">
                   <span className="text-text-primary font-bold">
                     {record.player1BestLeg > 0 ? `${record.player1BestLeg} pijlen` : '—'}
@@ -133,6 +135,8 @@ export function CompetitionScreen() {
   const playerIds = players.map(p => p.id);
   const standings = getStandings(games, playerIds);
   const h2hRecords = getH2HRecords(games, playerIds);
+  const cricketStandings = getCricketStandings(games, playerIds);
+  const cricketH2H = getCricketH2HRecords(games, playerIds);
 
   return (
     <div className="h-screen bg-background flex flex-col">
@@ -150,13 +154,19 @@ export function CompetitionScreen() {
           onPointerDown={() => setTab('ranglijst')}
           className={`flex-1 py-2.5 rounded-xl text-sm font-semibold touch-manipulation flex items-center justify-center gap-2 ${tab === 'ranglijst' ? 'bg-accent text-black' : 'bg-surface2 text-text-secondary'}`}
         >
-          <Trophy size={16} /> Ranglijst
+          <Trophy size={16} /> X01
         </button>
         <button
           onPointerDown={() => setTab('duels')}
           className={`flex-1 py-2.5 rounded-xl text-sm font-semibold touch-manipulation flex items-center justify-center gap-2 ${tab === 'duels' ? 'bg-accent text-black' : 'bg-surface2 text-text-secondary'}`}
         >
-          <Swords size={16} /> H2H Duels
+          <Swords size={16} /> H2H
+        </button>
+        <button
+          onPointerDown={() => setTab('cricket')}
+          className={`flex-1 py-2.5 rounded-xl text-sm font-semibold touch-manipulation flex items-center justify-center gap-2 ${tab === 'cricket' ? 'bg-accent text-black' : 'bg-surface2 text-text-secondary'}`}
+        >
+          🏏 Cricket
         </button>
       </div>
 
@@ -243,6 +253,77 @@ export function CompetitionScreen() {
                     </div>
                   );
                 })}
+              </div>
+            )}
+          </motion.div>
+        )}
+
+        {/* CRICKET TAB */}
+        {!loading && tab === 'cricket' && (
+          <motion.div
+            key="cricket"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="space-y-4"
+          >
+            {/* Cricket standings */}
+            {cricketStandings.length > 0 && (
+              <div className="bg-surface rounded-2xl overflow-hidden">
+                <div className="flex items-center px-4 py-2 border-b border-surface2">
+                  <span className="w-8" />
+                  <span className="flex-1 text-text-secondary text-xs font-semibold uppercase tracking-wide">Speler</span>
+                  <span className="w-10 text-center text-text-secondary text-xs font-semibold uppercase">P</span>
+                  <span className="w-10 text-center text-text-secondary text-xs font-semibold uppercase">W</span>
+                  <span className="w-10 text-center text-text-secondary text-xs font-semibold uppercase">V</span>
+                  <span className="w-14 text-right text-text-secondary text-xs font-semibold uppercase">Win%</span>
+                </div>
+                {cricketStandings.map((row, idx) => {
+                  const player = players.find(p => p.id === row.playerId);
+                  if (!player) return null;
+                  return (
+                    <motion.div
+                      key={row.playerId}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: idx * 0.05 }}
+                      className="flex items-center px-4 py-3 border-b border-surface2 last:border-0"
+                    >
+                      <div className="w-8 flex items-center justify-center">
+                        <Medal rank={idx + 1} />
+                      </div>
+                      <div className="flex-1 flex items-center gap-2">
+                        <PlayerAvatar name={player.name} size="sm" />
+                        <span className="text-text-primary font-semibold text-sm truncate">{player.name}</span>
+                      </div>
+                      <span className="w-10 text-center text-text-secondary text-sm">{row.gamesPlayed}</span>
+                      <span className="w-10 text-center text-accent font-bold text-sm">{row.wins}</span>
+                      <span className="w-10 text-center text-danger text-sm">{row.losses}</span>
+                      <span className="w-14 text-right text-text-primary font-semibold text-sm">{row.winPct}%</span>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Cricket H2H matchups */}
+            {cricketH2H.length > 0 && (
+              <div className="space-y-3">
+                <h3 className="text-text-secondary text-xs font-semibold uppercase tracking-wider px-1">Duels</h3>
+                {cricketH2H.map(record => (
+                  <H2HCard
+                    key={`c-${record.player1Id}-${record.player2Id}`}
+                    record={record}
+                    players={players}
+                    hideSuffix
+                  />
+                ))}
+              </div>
+            )}
+
+            {cricketStandings.length === 0 && cricketH2H.length === 0 && (
+              <div className="text-center text-text-secondary py-12">
+                <span className="text-4xl block mb-3">🏏</span>
+                <p>Nog geen cricket gespeeld.</p>
               </div>
             )}
           </motion.div>

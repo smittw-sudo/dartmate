@@ -6,7 +6,7 @@ import {
   getStartingScore, createVisit, applyVisitToState,
   checkLegWinner, isGameOver, getLegTarget, getSetsEnabled,
 } from '../engine/x01Logic';
-import { applyHits, initCricketProgress, isCricketGameComplete } from '../engine/cricketLogic';
+import { applyHits, applyMultiTargetHits, initCricketProgress, isCricketGameComplete, CricketTarget } from '../engine/cricketLogic';
 import { upsertGame, upsertPausedGame, removePausedGame } from '../lib/supabase';
 import { haptics } from '../utils/haptics';
 
@@ -28,6 +28,7 @@ interface GameStore {
   startGame: (config: GameConfig) => void;
   submitVisit: (darts: DartThrow[], options?: { checkoutDouble?: number; dartsCount?: number }) => void;
   submitCricketHits: (hits: number) => void;
+  submitCricketVisit: (entries: { target: CricketTarget; hits: number }[]) => void;
   bustCurrentVisit: () => void;
   undoLastVisit: () => void;
   addDartToVisit: (dart: DartThrow) => void;
@@ -233,6 +234,42 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
       if (result.winnerId !== game.firstPlayerThisGame) {
         set({ showAnimation: 'broken', animationData: game.firstPlayerThisGame });
+      }
+
+      set({
+        game: { ...newState, isGameOver: true, winnerId: result.winnerId },
+        completedLegs: [...completedLegs, leg],
+      });
+      return;
+    }
+
+    set({ game: newState });
+  },
+
+  submitCricketVisit: (entries: { target: CricketTarget; hits: number }[]) => {
+    const { game, completedLegs } = get();
+    if (!game) return;
+
+    const currentPlayerId = game.playerIds[game.currentPlayerIndex];
+    haptics.confirm();
+
+    const newState = applyMultiTargetHits(game, currentPlayerId, entries);
+    const result = isCricketGameComplete(newState);
+
+    if (result.complete) {
+      const leg: LegRecord = {
+        legNumber: game.currentLeg,
+        setNumber: game.currentSet,
+        startingPlayerId: game.firstPlayerThisLeg,
+        winnerId: result.winnerId,
+        visits: game.visits,
+        checkoutDouble: null,
+      };
+
+      if (result.winnerId !== game.firstPlayerThisGame) {
+        set({ showAnimation: 'broken', animationData: game.firstPlayerThisGame });
+      } else {
+        set({ showAnimation: 'legWon', animationData: result.winnerId ?? '' });
       }
 
       set({

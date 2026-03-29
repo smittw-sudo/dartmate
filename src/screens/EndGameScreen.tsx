@@ -7,6 +7,7 @@ import { PlayerAvatar } from '../components/ui/PlayerAvatar';
 import { Button } from '../components/ui/Button';
 import { Trophy, RotateCcw, Home, Zap } from 'lucide-react';
 import { updateStatsAfterGame } from '../engine/statsEngine';
+import { ActiveGameState } from '../data/types';
 
 export function EndGameScreen() {
   const navigate = useNavigate();
@@ -16,14 +17,16 @@ export function EndGameScreen() {
   const players = useAppStore(s => s.players);
   const updatePlayer = useAppStore(s => s.updatePlayer);
 
-  const [saved, setSaved] = useState(false);
+  // Capture game snapshot at mount time — endGame() will clear game to null,
+  // but we keep rendering from the snapshot so the screen stays visible.
+  const [snapshot] = useState<ActiveGameState | null>(() => game);
 
   useEffect(() => {
-    if (!game?.isGameOver) { navigate('/'); return; }
-    if (saved) return;
-    setSaved(true);
-
-    // checkoutDouble is already stored in each leg record (captured inline during play)
+    if (!snapshot?.isGameOver) {
+      navigate('/');
+      return;
+    }
+    // Save game record and update player stats
     endGame().then(async (record) => {
       if (!record) return;
       for (const pid of record.playerIds) {
@@ -34,20 +37,19 @@ export function EndGameScreen() {
         }
       }
     });
-  }, [game?.isGameOver]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (!game?.isGameOver) return null;
+  if (!snapshot?.isGameOver) return null;
 
-  const winner = players.find(p => p.id === game.winnerId);
+  const winner = players.find(p => p.id === snapshot.winnerId);
 
   const handleNewGame = () => {
-    if (!game) return;
-    const reversed = [...game.playerIds].reverse();
+    const reversed = [...snapshot.playerIds].reverse();
     startGame({
-      gameType: game.gameType,
-      format: game.format,
+      gameType: snapshot.gameType,
+      format: snapshot.format,
       playerIds: reversed,
-      teams: game.teams,
+      teams: snapshot.teams,
       legsToWinSet: 4,
       setsToWin: 3,
     });
@@ -83,17 +85,17 @@ export function EndGameScreen() {
 
         {/* Score overview */}
         <div className="w-full bg-surface rounded-2xl p-4 space-y-2">
-          {game.playerIds.map(pid => {
+          {snapshot.playerIds.map(pid => {
             const p = players.find(x => x.id === pid);
-            const legsWon = game.legsWon[pid] ?? 0;
+            const legsWon = snapshot.legsWon[pid] ?? 0;
             return (
               <div key={pid} className="flex items-center gap-3">
                 <PlayerAvatar name={p?.name ?? '?'} size="sm" />
                 <span className="flex-1 text-text-primary font-semibold">{p?.name}</span>
-                <span className={`font-bold text-lg ${pid === game.winnerId ? 'text-accent' : 'text-text-secondary'}`}>
+                <span className={`font-bold text-lg ${pid === snapshot.winnerId ? 'text-accent' : 'text-text-secondary'}`}>
                   {legsWon} {legsWon === 1 ? 'leg' : 'legs'}
                 </span>
-                {pid === game.winnerId && <Trophy size={16} className="text-warning" />}
+                {pid === snapshot.winnerId && <Trophy size={16} className="text-warning" />}
               </div>
             );
           })}

@@ -5,20 +5,20 @@ import {
   getCricketProgress, getOpenTargets, CRICKET_TARGETS, REQUIRED_HITS, CricketTarget,
 } from '../../engine/cricketLogic';
 import { Button } from '../ui/Button';
-import { CheckCircle2, Plus, Minus } from 'lucide-react';
+import { CheckCircle2 } from 'lucide-react';
 
-/** Dots showing 0–3 hits for a target (existing = faded, new = bright) */
+/** Dots showing 0–3 hits (existing = faded, new = bright) */
 function HitDots({ existing, added }: { existing: number; added: number }) {
   return (
-    <div className="flex gap-1.5 justify-center">
+    <div className="flex gap-1.5">
       {[0, 1, 2].map(i => {
         const isFilled = i < existing;
         const isNew = !isFilled && i < existing + added;
         return (
           <div
             key={i}
-            className={`w-3.5 h-3.5 rounded-full transition-colors ${
-              isFilled ? 'bg-accent opacity-60' : isNew ? 'bg-accent' : 'bg-surface2'
+            className={`w-3 h-3 rounded-full transition-colors ${
+              isFilled ? 'bg-accent opacity-50' : isNew ? 'bg-accent' : 'bg-surface2'
             }`}
           />
         );
@@ -27,12 +27,18 @@ function HitDots({ existing, added }: { existing: number; added: number }) {
   );
 }
 
+const HIT_OPTIONS: { label: string; value: number }[] = [
+  { label: '—', value: 0 },
+  { label: 'S', value: 1 },
+  { label: 'D', value: 2 },
+  { label: 'T', value: 3 },
+];
+
 export function CricketInput() {
   const game = useGameStore(s => s.game);
   const submitCricketVisit = useGameStore(s => s.submitCricketVisit);
   const players = useAppStore(s => s.players);
 
-  // hits entered this turn: keyed by target (number or 'bull')
   const [hits, setHits] = useState<Record<string | number, number>>({});
 
   if (!game) return null;
@@ -44,21 +50,9 @@ export function CricketInput() {
 
   const getKey = (t: CricketTarget) => (t === 'bull' ? 'bull' : t);
 
-  const inc = (t: CricketTarget) => {
-    if (totalHits >= 3) return;
+  const selectHits = (t: CricketTarget, value: number) => {
     const key = getKey(t);
-    const existing = progress[key] ?? 0;
-    const alreadyAdded = hits[key] ?? 0;
-    // don't allow adding more than needed to close
-    if (existing + alreadyAdded >= REQUIRED_HITS) return;
-    setHits(prev => ({ ...prev, [key]: alreadyAdded + 1 }));
-  };
-
-  const dec = (t: CricketTarget) => {
-    const key = getKey(t);
-    const cur = hits[key] ?? 0;
-    if (cur <= 0) return;
-    setHits(prev => ({ ...prev, [key]: cur - 1 }));
+    setHits(prev => ({ ...prev, [key]: value }));
   };
 
   const handleConfirm = () => {
@@ -83,7 +77,10 @@ export function CricketInput() {
               {game.playerIds.map(pid => {
                 const p = players.find(x => x.id === pid);
                 return (
-                  <th key={pid} className={`px-2 py-1 text-xs ${pid === currentPlayerId ? 'text-accent' : ''}`}>
+                  <th
+                    key={pid}
+                    className={`px-2 py-1 text-xs ${pid === currentPlayerId ? 'text-accent' : ''}`}
+                  >
                     {p?.name ?? '?'}
                   </th>
                 );
@@ -94,10 +91,10 @@ export function CricketInput() {
             {CRICKET_TARGETS.map(t => {
               const key = getKey(t);
               const tLabel = t === 'bull' ? 'Bull' : String(t);
-              const isOpen = openTargets.includes(t);
+              const isCurrentTarget = openTargets[0] === t;
               return (
-                <tr key={tLabel} className={isOpen && openTargets[0] === t ? 'bg-accent/10' : ''}>
-                  <td className={`px-2 py-1 text-left font-bold text-sm ${isOpen && openTargets[0] === t ? 'text-accent' : 'text-text-secondary'}`}>
+                <tr key={tLabel} className={isCurrentTarget ? 'bg-accent/10' : ''}>
+                  <td className={`px-2 py-1 text-left font-bold text-sm ${isCurrentTarget ? 'text-accent' : 'text-text-secondary'}`}>
                     {tLabel}
                   </td>
                   {game.playerIds.map(pid => {
@@ -121,12 +118,12 @@ export function CricketInput() {
         </table>
       </div>
 
-      {/* Per-target hit entry */}
+      {/* Per-target S/D/T input */}
       <div className="bg-surface rounded-2xl p-4">
         <div className="flex items-center justify-between mb-3">
-          <span className="text-text-secondary text-sm font-semibold">Pijlen deze beurt</span>
+          <span className="text-text-secondary text-sm font-semibold">Raakschoten invoeren</span>
           <span className={`text-lg font-black tabular ${totalHits === 3 ? 'text-accent' : 'text-text-primary'}`}>
-            {totalHits} / 3
+            {totalHits}/3 pijlen
           </span>
         </div>
 
@@ -137,58 +134,59 @@ export function CricketInput() {
             {openTargets.map((t, idx) => {
               const key = getKey(t);
               const existing = progress[key] ?? 0;
-              const added = hits[key] ?? 0;
               const needed = REQUIRED_HITS - existing;
+              const selected = hits[key] ?? 0;
+              const dartsUsedElsewhere = totalHits - selected;
               const label = t === 'bull' ? 'Bull' : String(t);
               const isFirst = idx === 0;
 
               return (
                 <div
                   key={key}
-                  className={`flex items-center gap-3 py-2 px-3 rounded-xl ${isFirst ? 'bg-accent/10 border border-accent/30' : 'bg-surface2'}`}
+                  className={`flex items-center gap-2 py-2 px-3 rounded-xl ${isFirst ? 'bg-accent/10 border border-accent/30' : 'bg-surface2'}`}
                 >
                   {/* Target label */}
-                  <span className={`font-black text-xl w-12 tabular ${isFirst ? 'text-accent' : 'text-text-primary'}`}>
+                  <span className={`font-black text-xl w-12 tabular shrink-0 ${isFirst ? 'text-accent' : 'text-text-primary'}`}>
                     {label}
                   </span>
 
                   {/* Dots */}
-                  <div className="flex-1">
-                    <HitDots existing={existing} added={added} />
-                    <div className="text-text-secondary text-xs text-center mt-0.5">
-                      {existing + added >= REQUIRED_HITS ? 'Gesloten!' : `${existing + added}/${REQUIRED_HITS}`}
-                    </div>
+                  <div className="shrink-0">
+                    <HitDots existing={existing} added={selected} />
                   </div>
 
-                  {/* +/- buttons */}
-                  <div className="flex items-center gap-2">
-                    <button
-                      onPointerDown={() => dec(t)}
-                      disabled={added === 0}
-                      className="w-9 h-9 rounded-xl bg-surface flex items-center justify-center disabled:opacity-30 active:bg-surface2 touch-manipulation"
-                    >
-                      <Minus size={16} className="text-text-primary" />
-                    </button>
-                    <span className="text-text-primary font-bold text-lg w-5 text-center tabular">{added}</span>
-                    <button
-                      onPointerDown={() => inc(t)}
-                      disabled={totalHits >= 3 || existing + added >= REQUIRED_HITS}
-                      className="w-9 h-9 rounded-xl bg-surface flex items-center justify-center disabled:opacity-30 active:bg-surface2 touch-manipulation"
-                    >
-                      <Plus size={16} className="text-text-primary" />
-                    </button>
+                  {/* S / D / T buttons */}
+                  <div className="flex gap-1.5 ml-auto">
+                    {HIT_OPTIONS.map(opt => {
+                      const isSelected = selected === opt.value;
+                      // Disable if: selecting this would exceed 3 total darts
+                      //             OR this target doesn't need this many more hits
+                      const wouldExceed = dartsUsedElsewhere + opt.value > 3;
+                      const exceedsNeed = opt.value > 0 && opt.value > needed;
+                      const disabled = !isSelected && (wouldExceed || exceedsNeed);
+
+                      return (
+                        <button
+                          key={opt.value}
+                          onPointerDown={() => !disabled && selectHits(t, opt.value)}
+                          disabled={disabled}
+                          className={`w-10 h-10 rounded-xl text-sm font-bold touch-manipulation transition-colors ${
+                            isSelected
+                              ? 'bg-accent text-black'
+                              : disabled
+                              ? 'bg-surface2 text-text-secondary opacity-30'
+                              : 'bg-surface2 text-text-primary active:bg-surface'
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               );
             })}
           </div>
-        )}
-
-        {/* Hint when no hits entered yet */}
-        {totalHits === 0 && openTargets.length > 0 && (
-          <p className="text-text-secondary text-xs text-center mt-2">
-            Voer je raakschoten in per doel (max 3 pijlen)
-          </p>
         )}
       </div>
 
@@ -202,7 +200,6 @@ export function CricketInput() {
           size="lg"
           fullWidth
           onPointerDown={handleConfirm}
-          disabled={openTargets.length === 0 && totalHits === 0}
         >
           Bevestig {totalHits > 0 ? `(${totalHits}×)` : ''}
         </Button>

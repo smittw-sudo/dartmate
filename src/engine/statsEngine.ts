@@ -1,5 +1,22 @@
 import { GameRecord, PlayerProfile, PlayerStats, defaultStats } from '../data/types';
 
+/** Rebuild all stats from scratch by replaying games in chronological order.
+ *  Used after deleting a game so stats stay accurate. */
+export function rebuildPlayerStats(
+  player: PlayerProfile,
+  remainingGames: GameRecord[],
+): PlayerProfile {
+  const blank: PlayerProfile = {
+    ...player,
+    stats: defaultStats(),
+    preferredDoubles: {},
+  };
+  const sorted = [...remainingGames].sort((a, b) => a.date.localeCompare(b.date));
+  return sorted
+    .filter(g => g.isComplete && g.playerIds.includes(player.id))
+    .reduce((p, game) => updateStatsAfterGame(p, game), blank);
+}
+
 export function calculateAverage(totalScored: number, totalDarts: number): number {
   if (totalDarts === 0) return 0;
   return Math.round((totalScored / (totalDarts / 3)) * 10) / 10;

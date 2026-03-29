@@ -75,6 +75,11 @@ export async function fetchGames(): Promise<GameRecord[]> {
   return (data ?? []).map(rowToGame);
 }
 
+export async function deleteGame(id: string): Promise<void> {
+  const { error } = await supabase.from('games').delete().eq('id', id);
+  if (error) throw error;
+}
+
 export async function upsertGame(game: GameRecord): Promise<void> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Niet ingelogd');

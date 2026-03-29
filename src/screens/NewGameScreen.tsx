@@ -53,7 +53,7 @@ export function NewGameScreen() {
   };
 
   const handleStart = () => {
-    if (selectedPlayerIds.length < 2) return;
+    if (selectedPlayerIds.length < 1) return;
     startGame({
       gameType,
       format,
@@ -220,9 +220,9 @@ export function NewGameScreen() {
                 size="xl"
                 fullWidth
                 onPointerDown={handleStart}
-                disabled={selectedPlayerIds.length < 2}
+                disabled={selectedPlayerIds.length < 1}
               >
-                Start Spel ({selectedPlayerIds.length} spelers)
+                Start Spel ({selectedPlayerIds.length} {selectedPlayerIds.length === 1 ? 'speler' : 'spelers'})
               </Button>
             </motion.div>
           )}

@@ -81,7 +81,7 @@ export function HistoryScreen() {
   const players = useAppStore(s => s.players);
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="h-screen bg-background flex flex-col">
       <div className="flex items-center gap-3 px-6 pt-8 pb-4">
         <button onPointerDown={() => navigate('/')} className="p-2 touch-manipulation">
           <ArrowLeft size={24} className="text-text-primary" />

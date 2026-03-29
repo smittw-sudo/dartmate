@@ -41,11 +41,11 @@ export function updateStatsAfterGame(
 
   for (const leg of game.legs) {
     const playerVisits = leg.visits.filter(v => v.playerId === player.id);
-    const dartsThisLeg = playerVisits.reduce((s, v) => s + v.darts.length, 0);
+    const dartsThisLeg = playerVisits.reduce((s, v) => s + (v.dartsCount ?? v.darts.length), 0);
 
     for (const visit of playerVisits) {
       const score = visit.totalScore;
-      dartsThisGame += visit.darts.length;
+      dartsThisGame += visit.dartsCount ?? visit.darts.length;
       if (!visit.isBust) {
         scoredThisGame += score;
         if (score === 180) stats.oneEighties += 1;

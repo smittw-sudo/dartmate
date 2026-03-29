@@ -26,7 +26,7 @@ interface GameStore {
   animationData: string;
 
   startGame: (config: GameConfig) => void;
-  submitVisit: (darts: DartThrow[]) => void;
+  submitVisit: (darts: DartThrow[], options?: { checkoutDouble?: number; dartsCount?: number }) => void;
   submitCricketHits: (hits: number) => void;
   bustCurrentVisit: () => void;
   undoLastVisit: () => void;
@@ -101,12 +101,15 @@ export const useGameStore = create<GameStore>((set, get) => ({
     set({ game: { ...game, currentVisitDarts: darts } });
   },
 
-  submitVisit: (darts: DartThrow[]) => {
+  submitVisit: (darts: DartThrow[], options?: { checkoutDouble?: number; dartsCount?: number }) => {
     const { game, completedLegs } = get();
     if (!game) return;
 
     const currentPlayerId = game.playerIds[game.currentPlayerIndex];
-    const visit = createVisit(game, currentPlayerId, darts);
+    const visit = createVisit(game, currentPlayerId, darts, {
+      checkoutDouble: options?.checkoutDouble,
+      dartsCount: options?.dartsCount,
+    });
 
     // Check for 180
     if (visit.totalScore === 180) {
@@ -126,14 +129,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (legWinner) {
       haptics.legWon();
 
-      // Record leg
+      // Record leg — checkoutDouble vanuit options of vanuit de visit zelf
       const leg: LegRecord = {
         legNumber: game.currentLeg,
         setNumber: game.currentSet,
         startingPlayerId: game.firstPlayerThisLeg,
         winnerId: legWinner,
         visits: [...game.visits, visit],
-        checkoutDouble: null,
+        checkoutDouble: options?.checkoutDouble ?? visit.checkoutDouble ?? null,
       };
       const newLegs = [...completedLegs, leg];
 
@@ -254,6 +257,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       totalScore: darts.reduce((s, d) => s + d.score, 0),
       remainingAfter: game.scores[currentPlayerId],
       isBust: true,
+      dartsCount: darts.length === 0 ? 3 : darts.length, // totaalmodus = altijd 3
     };
 
     haptics.bust();

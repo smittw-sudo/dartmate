@@ -57,7 +57,7 @@ export function ActiveGameScreen() {
   const getAverage = (playerId: string) => {
     const visits = getPlayerVisits(playerId);
     const scored = visits.filter(v => !v.isBust).reduce((s, v) => s + v.totalScore, 0);
-    const darts = visits.reduce((s, v) => s + v.darts.length, 0);
+    const darts = visits.reduce((s, v) => s + (v.dartsCount ?? v.darts.length), 0);
     if (darts === 0) return 0;
     return calculateAverage(scored, darts);
   };
@@ -143,10 +143,9 @@ export function ActiveGameScreen() {
                 {isCricket ? '—' : score}
               </div>
 
-              {isCurrent ? (
+              <div className="text-text-secondary text-xs">avg {avg.toFixed(1)}</div>
+              {isCurrent && (
                 <div className="text-accent text-xs font-bold uppercase tracking-wide">Aan de beurt</div>
-              ) : (
-                <div className="text-text-secondary text-xs">avg {avg.toFixed(1)}</div>
               )}
 
               {lastScore !== null && !isCurrent && (

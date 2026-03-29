@@ -42,6 +42,8 @@ export interface Visit {
   totalScore: number;
   remainingAfter: number;
   isBust: boolean;
+  dartsCount?: number;       // altijd 3 in totaalmodus, werkelijk aantal in dartbordmodus
+  checkoutDouble?: number;   // segment van de uitgooi-dubbel (1-20 of 50 voor Bull)
 }
 
 export interface LegRecord {

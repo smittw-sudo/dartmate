@@ -159,12 +159,24 @@ export function createVisit(
   state: ActiveGameState,
   playerId: string,
   darts: DartThrow[],
+  options?: {
+    checkoutDouble?: number; // expliciet opgegeven dubbel → nooit bust
+    dartsCount?: number;     // override voor gemiddelde-berekening (altijd 3 in totaalmodus)
+    totalOverride?: number;  // override totaalscore (bij dubbel-pad finish)
+  }
 ): Visit {
-  const total = darts.reduce((s, d) => s + d.score, 0);
+  const total = options?.totalOverride ?? darts.reduce((s, d) => s + d.score, 0);
   const remaining = state.scores[playerId];
   const newRemaining = remaining - total;
 
-  const bust = isBust(total, remaining) || (newRemaining === 0 && darts.length > 0 && !isDoubleOut(darts[darts.length - 1]));
+  let bust: boolean;
+  if (options?.checkoutDouble !== undefined) {
+    // Speler heeft expliciet een dubbel gekozen → geen bust
+    bust = false;
+  } else {
+    bust = isBust(total, remaining) ||
+      (newRemaining === 0 && darts.length > 0 && !isDoubleOut(darts[darts.length - 1]));
+  }
 
   return {
     playerId,
@@ -172,5 +184,7 @@ export function createVisit(
     totalScore: total,
     remainingAfter: bust ? remaining : Math.max(0, newRemaining),
     isBust: bust,
+    dartsCount: options?.dartsCount ?? darts.length,
+    checkoutDouble: options?.checkoutDouble,
   };
 }

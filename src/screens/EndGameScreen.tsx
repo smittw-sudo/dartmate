@@ -6,12 +6,7 @@ import { useAppStore } from '../store/appStore';
 import { PlayerAvatar } from '../components/ui/PlayerAvatar';
 import { Button } from '../components/ui/Button';
 import { Trophy, RotateCcw, Home, Zap } from 'lucide-react';
-import { GameRecord } from '../data/types';
 import { updateStatsAfterGame } from '../engine/statsEngine';
-
-const DOUBLES = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,'bull'] as const;
-
-type EndStep = 'checkout' | 'result';
 
 export function EndGameScreen() {
   const navigate = useNavigate();
@@ -20,53 +15,33 @@ export function EndGameScreen() {
   const startGame = useGameStore(s => s.startGame);
   const players = useAppStore(s => s.players);
   const updatePlayer = useAppStore(s => s.updatePlayer);
-  const showAnimation = useGameStore(s => s.showAnimation);
 
-  const [step, setStep] = useState<EndStep>('checkout');
-  const [checkoutDouble, setCheckoutDouble] = useState<number | null>(null);
-  const [finalRecord, setFinalRecord] = useState<GameRecord | null>(null);
+  const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    if (!game?.isGameOver) navigate('/');
-  }, [game, navigate]);
+    if (!game?.isGameOver) { navigate('/'); return; }
+    if (saved) return;
+    setSaved(true);
+
+    // checkoutDouble is already stored in each leg record (captured inline during play)
+    endGame().then(async (record) => {
+      if (!record) return;
+      for (const pid of record.playerIds) {
+        const player = players.find(p => p.id === pid);
+        if (player) {
+          const updated = updateStatsAfterGame(player, record);
+          await updatePlayer(updated);
+        }
+      }
+    });
+  }, [game?.isGameOver]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!game?.isGameOver) return null;
 
   const winner = players.find(p => p.id === game.winnerId);
 
-  const handleCheckoutConfirm = async (dbl: number | null) => {
-    setCheckoutDouble(dbl);
-    // Save game
-    const record = await endGame();
-    setFinalRecord(record);
-
-    // Update player stats
-    if (record) {
-      for (const pid of record.playerIds) {
-        const player = players.find(p => p.id === pid);
-        if (player) {
-          let updated = updateStatsAfterGame(player, record);
-          // Save preferred double for winner
-          if (pid === record.winnerId && dbl !== null) {
-            updated = {
-              ...updated,
-              preferredDoubles: {
-                ...updated.preferredDoubles,
-                [dbl]: (updated.preferredDoubles[dbl] ?? 0) + 1,
-              },
-            };
-          }
-          await updatePlayer(updated);
-        }
-      }
-    }
-
-    setStep('result');
-  };
-
   const handleNewGame = () => {
     if (!game) return;
-    // Reverse order
     const reversed = [...game.playerIds].reverse();
     startGame({
       gameType: game.gameType,
@@ -82,54 +57,6 @@ export function EndGameScreen() {
   const handleNewType = () => navigate('/nieuw-spel');
   const handleHome = () => navigate('/');
 
-  // Checkout selection step
-  if (step === 'checkout' && winner) {
-    return (
-      <div className="min-h-screen bg-background flex flex-col items-center px-6 pt-12">
-        <motion.div
-          className="w-full max-w-md"
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
-          <div className="flex flex-col items-center mb-8">
-            <PlayerAvatar name={winner.name} size="xl" />
-            <h1 className="text-3xl font-black text-text-primary mt-4">{winner.name} wint!</h1>
-          </div>
-
-          <h2 className="text-lg font-semibold text-text-secondary mb-4 text-center">
-            Met welke dubbel heeft {winner.name} uitgegooid?
-          </h2>
-
-          <div className="grid grid-cols-5 gap-2 mb-6">
-            {DOUBLES.map(d => {
-              const label = d === 'bull' ? 'Bull' : `D${d}`;
-              const val = d === 'bull' ? 50 : Number(d);
-              return (
-                <button
-                  key={d}
-                  onPointerDown={() => handleCheckoutConfirm(val)}
-                  className="h-12 bg-surface2 rounded-xl text-sm font-bold text-text-primary active:bg-accent active:text-black touch-manipulation"
-                >
-                  {label}
-                </button>
-              );
-            })}
-          </div>
-
-          <Button
-            variant="ghost"
-            size="lg"
-            fullWidth
-            onPointerDown={() => handleCheckoutConfirm(null)}
-          >
-            Overslaan
-          </Button>
-        </motion.div>
-      </div>
-    );
-  }
-
-  // Result step
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6">
       <motion.div

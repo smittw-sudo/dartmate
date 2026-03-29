@@ -68,7 +68,8 @@ export function PlayerDetailScreen() {
 
         <Section title="Scoring (X01)">
           <StatRow label="3-pijl gemiddelde" value={getAverageFromStats(stats).toFixed(1)} />
-          <StatRow label="Hoogste beurt" value={stats.totalScored > 0 ? '—' : 0} />
+          <StatRow label="Totaal pijlen gegooid" value={stats.totalDartsThrown} />
+          <StatRow label="Totaal gescoord" value={stats.totalScored} />
           <StatRow label="180's" value={stats.oneEighties} />
           <StatRow label="140+" value={stats.hundredFortyPlus} />
           <StatRow label="100+" value={stats.hundredPlus} />

@@ -24,6 +24,13 @@ export function DartboardInput() {
 
   const lastDart = darts[darts.length - 1] ?? null;
 
+  // A dart counts as checkout-double if it's a double ring or the bullseye (50)
+  const getCheckoutDouble = (dart: DartThrow, newRemaining: number): number | undefined => {
+    if (newRemaining !== 0) return undefined;
+    if (dart.multiplier === 2 || (dart.segment === 50 && dart.multiplier === 1)) return dart.segment;
+    return undefined;
+  };
+
   const handleDart = (dart: DartThrow) => {
     if (darts.length >= 3) return;
     addDart(dart);
@@ -36,15 +43,20 @@ export function DartboardInput() {
     const newDartCount = newDarts.length;
 
     if (newDartCount === 3 || newRemaining === 0 || newRemaining < 0) {
+      const checkoutDouble = getCheckoutDouble(dart, newRemaining);
       setTimeout(() => {
-        submitVisit(newDarts);
+        submitVisit(newDarts, { checkoutDouble });
       }, 150);
     }
   };
 
   const handleConfirm = () => {
     if (darts.length === 0) return;
-    submitVisit(darts);
+    const totalScore = darts.reduce((s, d) => s + d.score, 0);
+    const finalRemaining = remaining - totalScore;
+    const lastDart = darts[darts.length - 1];
+    const checkoutDouble = lastDart ? getCheckoutDouble(lastDart, finalRemaining) : undefined;
+    submitVisit(darts, { checkoutDouble });
   };
 
   const handleBust = () => {

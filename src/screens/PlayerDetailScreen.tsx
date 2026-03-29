@@ -40,7 +40,7 @@ export function PlayerDetailScreen() {
   const topDoubles = getTopDoubles(preferredDoubles, 3);
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="h-screen bg-background flex flex-col">
       <div className="flex items-center gap-3 px-6 pt-8 pb-4">
         <button onPointerDown={() => navigate(-1)} className="p-2 touch-manipulation">
           <ArrowLeft size={24} className="text-text-primary" />

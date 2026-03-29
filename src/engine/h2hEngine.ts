@@ -53,7 +53,9 @@ function bestLeg(games: GameRecord[], playerId: string): number {
   return best;
 }
 
-/** Ranglijst over alle X01-potjes voor de gegeven spelers-IDs */
+/** Ranglijst over alle X01-potjes voor de gegeven spelers-IDs.
+ *  Solo-potjes (1 speler) tellen NIET mee voor W/V/rangschikking,
+ *  maar wel voor het gemiddelde. */
 export function getStandings(
   games: GameRecord[],
   playerIds: string[],
@@ -62,18 +64,21 @@ export function getStandings(
 
   return playerIds
     .map(pid => {
-      const pg = x01.filter(g => g.playerIds.includes(pid));
-      const wins = pg.filter(g => g.winnerId === pid).length;
-      const draws = pg.filter(g => g.winnerId === null).length;
-      const losses = pg.length - wins - draws;
-      const { darts, scored } = statsFromGames(pg, pid);
+      const allPg  = x01.filter(g => g.playerIds.includes(pid));
+      // Alleen potjes met 2+ spelers tellen mee voor de ranglijst
+      const multiPg = allPg.filter(g => g.playerIds.length >= 2);
+      const wins   = multiPg.filter(g => g.winnerId === pid).length;
+      const draws  = multiPg.filter(g => g.winnerId === null).length;
+      const losses = multiPg.length - wins - draws;
+      // Gemiddelde berekend over álle potjes (ook solo)
+      const { darts, scored } = statsFromGames(allPg, pid);
       return {
         playerId: pid,
-        gamesPlayed: pg.length,
+        gamesPlayed: multiPg.length,
         wins,
         losses,
         draws,
-        winPct: pg.length > 0 ? Math.round((wins / pg.length) * 1000) / 10 : 0,
+        winPct: multiPg.length > 0 ? Math.round((wins / multiPg.length) * 1000) / 10 : 0,
         average: calculateAverage(scored, darts),
       };
     })

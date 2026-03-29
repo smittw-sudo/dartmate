@@ -5,12 +5,12 @@ import { useAppStore } from '../store/appStore';
 import { useGameStore } from '../store/gameStore';
 import { PlayerAvatar } from '../components/ui/PlayerAvatar';
 import { Button } from '../components/ui/Button';
-import { Play, Users, History, Target, Clock, LogOut, Swords } from 'lucide-react';
+import { Play, Users, History, Target, Clock, LogOut, Swords, Trash2 } from 'lucide-react';
 import { signOut } from '../lib/supabase';
 
 export function HomeScreen() {
   const navigate = useNavigate();
-  const { players, pausedGames, loadAll } = useAppStore();
+  const { players, pausedGames, loadAll, removePaused } = useAppStore();
   const resumeGame = useGameStore(s => s.resumeGame);
 
   useEffect(() => {
@@ -110,18 +110,26 @@ export function HomeScreen() {
                   hour: '2-digit', minute: '2-digit',
                 }) : '';
                 return (
-                  <button
-                    key={g.gameId}
-                    onPointerDown={() => handleResume(g.gameId)}
-                    className="w-full bg-surface rounded-2xl p-4 flex items-center gap-4 active:bg-surface2 touch-manipulation"
-                  >
-                    <Clock size={20} className="text-warning shrink-0" />
-                    <div className="flex-1 text-left">
-                      <div className="text-text-primary font-semibold">{gameTypeLabel}</div>
-                      <div className="text-text-secondary text-sm">{g.playerIds.length} spelers · {pausedDate}</div>
-                    </div>
-                    <div className="text-accent text-sm font-semibold">Hervat →</div>
-                  </button>
+                  <div key={g.gameId} className="flex items-center gap-2">
+                    <button
+                      onPointerDown={() => handleResume(g.gameId)}
+                      className="flex-1 bg-surface rounded-2xl p-4 flex items-center gap-4 active:bg-surface2 touch-manipulation"
+                    >
+                      <Clock size={20} className="text-warning shrink-0" />
+                      <div className="flex-1 text-left">
+                        <div className="text-text-primary font-semibold">{gameTypeLabel}</div>
+                        <div className="text-text-secondary text-sm">{g.playerIds.length} speler{g.playerIds.length !== 1 ? 's' : ''} · {pausedDate}</div>
+                      </div>
+                      <div className="text-accent text-sm font-semibold">Hervat →</div>
+                    </button>
+                    <button
+                      onPointerDown={() => removePaused(g.gameId)}
+                      className="bg-surface rounded-2xl p-4 text-danger active:bg-surface2 touch-manipulation shrink-0"
+                      title="Verwijderen"
+                    >
+                      <Trash2 size={20} />
+                    </button>
+                  </div>
                 );
               })}
             </div>

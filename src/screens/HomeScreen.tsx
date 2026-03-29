@@ -5,7 +5,8 @@ import { useAppStore } from '../store/appStore';
 import { useGameStore } from '../store/gameStore';
 import { PlayerAvatar } from '../components/ui/PlayerAvatar';
 import { Button } from '../components/ui/Button';
-import { Play, Users, History, Target, Clock } from 'lucide-react';
+import { Play, Users, History, Target, Clock, LogOut } from 'lucide-react';
+import { signOut } from '../lib/supabase';
 
 export function HomeScreen() {
   const navigate = useNavigate();
@@ -32,6 +33,9 @@ export function HomeScreen() {
           <Target size={32} className="text-accent" />
           <h1 className="text-3xl font-black text-text-primary tracking-tight">DartMate</h1>
         </div>
+        <button onPointerDown={() => signOut()} className="p-2 touch-manipulation">
+          <LogOut size={20} className="text-text-secondary" />
+        </button>
       </div>
 
       <div className="flex-1 px-6 py-4 overflow-y-auto space-y-6">

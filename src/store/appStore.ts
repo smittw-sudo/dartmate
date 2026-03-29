@@ -1,9 +1,9 @@
 import { create } from 'zustand';
 import { PlayerProfile, ActiveGameState, InputMode } from '../data/types';
 import {
-  getPlayers, savePlayer, updatePlayer as dbUpdatePlayer,
-  getPausedGames, savePausedGame, deletePausedGame,
-} from '../data/db';
+  fetchProfiles, upsertProfile, fetchPausedGames,
+  upsertPausedGame, removePausedGame,
+} from '../lib/supabase';
 import { initPlayerProfile } from '../engine/statsEngine';
 
 interface AppStore {
@@ -12,7 +12,6 @@ interface AppStore {
   inputMode: InputMode;
   isLoading: boolean;
 
-  // Actions
   loadAll: () => Promise<void>;
   addPlayer: (name: string) => Promise<PlayerProfile>;
   updatePlayer: (player: PlayerProfile) => Promise<void>;
@@ -32,21 +31,21 @@ export const useAppStore = create<AppStore>((set, get) => ({
   loadAll: async () => {
     set({ isLoading: true });
     const [players, pausedGames] = await Promise.all([
-      getPlayers(),
-      getPausedGames(),
+      fetchProfiles().catch(() => [] as PlayerProfile[]),
+      fetchPausedGames().catch(() => [] as ActiveGameState[]),
     ]);
     set({ players, pausedGames, isLoading: false });
   },
 
   addPlayer: async (name: string) => {
     const player = initPlayerProfile(name.trim());
-    await savePlayer(player);
+    await upsertProfile(player);
     set(s => ({ players: [...s.players, player] }));
     return player;
   },
 
   updatePlayer: async (player: PlayerProfile) => {
-    await dbUpdatePlayer(player);
+    await upsertProfile(player);
     set(s => ({
       players: s.players.map(p => p.id === player.id ? player : p),
     }));
@@ -58,12 +57,12 @@ export const useAppStore = create<AppStore>((set, get) => ({
   },
 
   loadPausedGames: async () => {
-    const pausedGames = await getPausedGames();
+    const pausedGames = await fetchPausedGames().catch(() => [] as ActiveGameState[]);
     set({ pausedGames });
   },
 
   savePaused: async (state: ActiveGameState) => {
-    await savePausedGame(state);
+    await upsertPausedGame(state);
     set(s => ({
       pausedGames: [
         ...s.pausedGames.filter(g => g.gameId !== state.gameId),
@@ -73,7 +72,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
   },
 
   removePaused: async (gameId: string) => {
-    await deletePausedGame(gameId);
+    await removePausedGame(gameId);
     set(s => ({
       pausedGames: s.pausedGames.filter(g => g.gameId !== gameId),
     }));

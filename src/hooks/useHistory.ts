@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { GameRecord } from '../data/types';
-import { getGames, getGamesByPlayer, getGamesByDate } from '../data/db';
+import { fetchGames } from '../lib/supabase';
 
 export function useHistory() {
   const [games, setGames] = useState<GameRecord[]>([]);
@@ -8,21 +8,7 @@ export function useHistory() {
 
   const loadAll = useCallback(async () => {
     setLoading(true);
-    const result = await getGames();
-    setGames(result);
-    setLoading(false);
-  }, []);
-
-  const loadByPlayer = useCallback(async (playerId: string) => {
-    setLoading(true);
-    const result = await getGamesByPlayer(playerId);
-    setGames(result);
-    setLoading(false);
-  }, []);
-
-  const loadByDate = useCallback(async (from: Date, to: Date) => {
-    setLoading(true);
-    const result = await getGamesByDate(from, to);
+    const result = await fetchGames().catch(() => [] as GameRecord[]);
     setGames(result);
     setLoading(false);
   }, []);
@@ -31,5 +17,5 @@ export function useHistory() {
     loadAll();
   }, [loadAll]);
 
-  return { games, loading, loadAll, loadByPlayer, loadByDate };
+  return { games, loading, loadAll };
 }

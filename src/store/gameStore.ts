@@ -7,7 +7,7 @@ import {
   checkLegWinner, isGameOver, getLegTarget, getSetsEnabled,
 } from '../engine/x01Logic';
 import { applyHits, initCricketProgress, isCricketGameComplete } from '../engine/cricketLogic';
-import { saveGame, savePausedGame, deletePausedGame } from '../data/db';
+import { upsertGame, upsertPausedGame, removePausedGame } from '../lib/supabase';
 import { haptics } from '../utils/haptics';
 
 interface GameConfig {
@@ -288,7 +288,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const { game } = get();
     if (!game) return;
     const paused = { ...game, pausedAt: new Date().toISOString() };
-    await savePausedGame(paused);
+    await upsertPausedGame(paused).catch(console.error);
     set({ game: null, completedLegs: [] });
   },
 
@@ -318,8 +318,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
       setsToWin: 0,
     };
 
-    await saveGame(record);
-    await deletePausedGame(game.gameId).catch(() => {});
+    await upsertGame(record).catch(console.error);
+    await removePausedGame(game.gameId).catch(() => {});
 
     set({ game: null, completedLegs: [] });
     return record;

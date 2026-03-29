@@ -5,7 +5,7 @@ import { useAppStore } from '../store/appStore';
 import { useGameStore } from '../store/gameStore';
 import { PlayerAvatar } from '../components/ui/PlayerAvatar';
 import { Button } from '../components/ui/Button';
-import { Play, Users, History, Target, Clock, LogOut } from 'lucide-react';
+import { Play, Users, History, Target, Clock, LogOut, Swords } from 'lucide-react';
 import { signOut } from '../lib/supabase';
 
 export function HomeScreen() {
@@ -79,6 +79,15 @@ export function HomeScreen() {
             onPointerDown={() => navigate('/geschiedenis')}
           >
             <History size={20} className="mr-2" /> Geschiedenis
+          </Button>
+          <Button
+            variant="secondary"
+            size="lg"
+            fullWidth
+            onPointerDown={() => navigate('/competitie')}
+            className="col-span-2"
+          >
+            <Swords size={20} className="mr-2" /> Onderlinge Stand
           </Button>
         </motion.div>
 

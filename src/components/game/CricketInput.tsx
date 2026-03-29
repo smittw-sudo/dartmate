@@ -46,9 +46,12 @@ export function CricketInput() {
   const currentPlayerId = game.playerIds[game.currentPlayerIndex];
   const progress = getCricketProgress(game, currentPlayerId);
   const openTargets = getOpenTargets(game, currentPlayerId, 3);
-  const totalHits = Object.values(hits).reduce((s, h) => s + h, 0);
 
   const getKey = (t: CricketTarget) => (t === 'bull' ? 'bull' : t);
+
+  // Each S/D/T = ONE dart (1 dart on single / double / triple ring)
+  // So dart budget = number of targets with a non-— selection (max 3)
+  const totalDarts = Object.values(hits).filter(h => h > 0).length;
 
   const selectHits = (t: CricketTarget, value: number) => {
     const key = getKey(t);
@@ -122,8 +125,8 @@ export function CricketInput() {
       <div className="bg-surface rounded-2xl p-4">
         <div className="flex items-center justify-between mb-3">
           <span className="text-text-secondary text-sm font-semibold">Raakschoten invoeren</span>
-          <span className={`text-lg font-black tabular ${totalHits === 3 ? 'text-accent' : 'text-text-primary'}`}>
-            {totalHits}/3 pijlen
+          <span className={`text-lg font-black tabular ${totalDarts === 3 ? 'text-accent' : 'text-text-primary'}`}>
+            {totalDarts}/3 pijlen
           </span>
         </div>
 
@@ -136,7 +139,6 @@ export function CricketInput() {
               const existing = progress[key] ?? 0;
               const needed = REQUIRED_HITS - existing;
               const selected = hits[key] ?? 0;
-              const dartsUsedElsewhere = totalHits - selected;
               const label = t === 'bull' ? 'Bull' : String(t);
               const isFirst = idx === 0;
 
@@ -159,11 +161,14 @@ export function CricketInput() {
                   <div className="flex gap-1.5 ml-auto">
                     {HIT_OPTIONS.map(opt => {
                       const isSelected = selected === opt.value;
-                      // Disable if: selecting this would exceed 3 total darts
-                      //             OR this target doesn't need this many more hits
-                      const wouldExceed = dartsUsedElsewhere + opt.value > 3;
+                      // Each S/D/T = 1 dart. Disable if:
+                      // - Would add a NEW dart (this target has no selection) but budget is full
+                      // - OR hits needed for this target < opt.value
+                      const hasSelectionHere = selected > 0;
+                      const dartsIfSelected = hasSelectionHere ? totalDarts : totalDarts + 1;
+                      const wouldExceedDarts = opt.value > 0 && dartsIfSelected > 3;
                       const exceedsNeed = opt.value > 0 && opt.value > needed;
-                      const disabled = !isSelected && (wouldExceed || exceedsNeed);
+                      const disabled = !isSelected && (wouldExceedDarts || exceedsNeed);
 
                       return (
                         <button
@@ -201,7 +206,7 @@ export function CricketInput() {
           fullWidth
           onPointerDown={handleConfirm}
         >
-          Bevestig {totalHits > 0 ? `(${totalHits}×)` : ''}
+          Bevestig {totalDarts > 0 ? `(${totalDarts} pijl${totalDarts !== 1 ? 'en' : ''})` : ''}
         </Button>
       </div>
     </div>

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useHistory } from '../hooks/useHistory';
 import { useAppStore } from '../store/appStore';
-import { ArrowLeft, ChevronDown, ChevronUp, Trophy, Clock, Trash2 } from 'lucide-react';
+import { ArrowLeft, ChevronDown, ChevronUp, Trophy, Clock, Trash2, AlertCircle } from 'lucide-react';
 import { GameRecord } from '../data/types';
 import { deleteGame } from '../lib/supabase';
 import { rebuildPlayerStats } from '../engine/statsEngine';
@@ -127,31 +127,35 @@ export function HistoryScreen() {
   const { games, loading, loadAll } = useHistory();
   const players = useAppStore(s => s.players);
   const updatePlayer = useAppStore(s => s.updatePlayer);
+  const loadAllProfiles = useAppStore(s => s.loadAll);
   const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
 
   const handleDelete = async (game: GameRecord) => {
     if (deleting) return;
     setDeleting(true);
+    setDeleteError('');
     try {
-      // 1. Remove from Supabase
+      // 1. Remove game from Supabase
       await deleteGame(game.id);
 
-      // 2. Get remaining games (without the deleted one)
+      // 2. Remaining games (snapshot before we reload)
       const remaining = games.filter(g => g.id !== game.id);
 
-      // 3. Rebuild stats for every player who was in this game
+      // 3. Rebuild and save stats for every player in this game
       for (const pid of game.playerIds) {
         const player = players.find(p => p.id === pid);
-        if (player) {
-          const rebuilt = rebuildPlayerStats(player, remaining);
-          await updatePlayer(rebuilt);
-        }
+        if (!player) continue;
+        const rebuilt = rebuildPlayerStats(player, remaining);
+        // Update local store immediately so UI reflects the change
+        await updatePlayer(rebuilt);
       }
 
-      // 4. Refresh game list
-      await loadAll();
+      // 4. Refresh games list AND player profiles from Supabase
+      await Promise.all([loadAll(), loadAllProfiles()]);
     } catch (e) {
       console.error('Verwijderen mislukt:', e);
+      setDeleteError('Verwijderen mislukt. Probeer opnieuw.');
     } finally {
       setDeleting(false);
     }
@@ -166,6 +170,11 @@ export function HistoryScreen() {
         <h1 className="text-2xl font-bold text-text-primary flex-1">Geschiedenis</h1>
         {deleting && (
           <span className="text-text-secondary text-sm animate-pulse">Verwijderen...</span>
+        )}
+        {deleteError && (
+          <span className="text-danger text-xs flex items-center gap-1">
+            <AlertCircle size={12} /> {deleteError}
+          </span>
         )}
       </div>
 

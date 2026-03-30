@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { useAppStore } from '../store/appStore';
 import { PlayerAvatar } from '../components/ui/PlayerAvatar';
 import { ArrowLeft } from 'lucide-react';
@@ -10,6 +11,25 @@ function StatRow({ label, value }: { label: string; value: string | number }) {
     <div className="flex justify-between items-center py-2 border-b border-surface2">
       <span className="text-text-secondary text-sm">{label}</span>
       <span className="text-text-primary font-semibold tabular">{value}</span>
+    </div>
+  );
+}
+
+function WinBar({ pct, label }: { pct: number; label: string }) {
+  return (
+    <div className="py-2 border-b border-surface2 space-y-1">
+      <div className="flex justify-between text-sm">
+        <span className="text-text-secondary">{label}</span>
+        <span className="text-text-primary font-semibold">{pct}%</span>
+      </div>
+      <div className="h-2 bg-surface2 rounded-full overflow-hidden">
+        <motion.div
+          className="h-full bg-accent rounded-full"
+          initial={{ width: 0 }}
+          animate={{ width: `${pct}%` }}
+          transition={{ duration: 0.6, ease: 'easeOut' }}
+        />
+      </div>
     </div>
   );
 }
@@ -38,10 +58,13 @@ export function PlayerDetailScreen() {
 
   const { stats, preferredDoubles } = player;
   const topDoubles = getTopDoubles(preferredDoubles, 3);
+  const cricketWinPct = stats.cricketGamesPlayed > 0
+    ? Math.round(stats.cricketGamesWon / stats.cricketGamesPlayed * 100)
+    : 0;
 
   return (
     <div className="h-screen bg-background flex flex-col">
-      <div className="flex items-center gap-3 px-6 pt-8 pb-4">
+      <div className="flex items-center gap-3 px-6 pt-8 pb-4 shrink-0">
         <button onPointerDown={() => navigate(-1)} className="p-2 touch-manipulation">
           <ArrowLeft size={24} className="text-text-primary" />
         </button>
@@ -49,7 +72,7 @@ export function PlayerDetailScreen() {
       </div>
 
       {/* Avatar */}
-      <div className="flex flex-col items-center py-6">
+      <div className="flex flex-col items-center py-6 shrink-0">
         <PlayerAvatar name={player.name} size="xl" />
         <p className="text-text-secondary text-sm mt-2">
           Lid sinds {new Date(player.createdAt).toLocaleDateString('nl-NL')}
@@ -59,8 +82,9 @@ export function PlayerDetailScreen() {
       <div className="flex-1 px-6 pb-8 overflow-y-auto space-y-4">
         <Section title="Algemeen">
           <StatRow label="Potjes gespeeld" value={stats.gamesPlayed} />
-          <StatRow label="Gewonnen" value={`${stats.gamesWon} (${getWinPercentage(stats)}%)`} />
+          <StatRow label="Gewonnen" value={stats.gamesWon} />
           <StatRow label="Verloren" value={stats.gamesPlayed - stats.gamesWon} />
+          <WinBar pct={getWinPercentage(stats)} label="Win-percentage" />
           <StatRow label="Huidige win-streak" value={stats.currentWinStreak} />
           <StatRow label="Langste win-streak" value={stats.longestWinStreak} />
           <StatRow label="Keer gebroken" value={stats.timesFirstAndBroke} />
@@ -92,13 +116,9 @@ export function PlayerDetailScreen() {
         <Section title="Cricket">
           <StatRow label="Cricket gespeeld" value={stats.cricketGamesPlayed} />
           <StatRow label="Cricket gewonnen" value={stats.cricketGamesWon} />
-          <StatRow
-            label="Win%"
-            value={stats.cricketGamesPlayed > 0
-              ? `${Math.round(stats.cricketGamesWon / stats.cricketGamesPlayed * 100)}%`
-              : '—'
-            }
-          />
+          {stats.cricketGamesPlayed > 0 && (
+            <WinBar pct={cricketWinPct} label="Win-percentage" />
+          )}
         </Section>
       </div>
     </div>

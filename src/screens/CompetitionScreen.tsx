@@ -1,21 +1,14 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, ChevronDown, ChevronUp, Trophy, Swords, TrendingUp } from 'lucide-react';
+import { ArrowLeft, ChevronDown, ChevronUp, Swords } from 'lucide-react';
 import { useHistory } from '../hooks/useHistory';
 import { useAppStore } from '../store/appStore';
 import { PlayerAvatar } from '../components/ui/PlayerAvatar';
-import { getStandings, getH2HRecords, getCricketStandings, getCricketH2HRecords, H2HRecord } from '../engine/h2hEngine';
+import { getH2HRecords, getCricketH2HRecords, H2HRecord } from '../engine/h2hEngine';
 import { PlayerProfile } from '../data/types';
 
-type Tab = 'ranglijst' | 'duels' | 'cricket';
-
-function Medal({ rank }: { rank: number }) {
-  if (rank === 1) return <span className="text-lg">🥇</span>;
-  if (rank === 2) return <span className="text-lg">🥈</span>;
-  if (rank === 3) return <span className="text-lg">🥉</span>;
-  return <span className="text-text-secondary text-sm font-bold w-6 text-center">{rank}</span>;
-}
+type Tab = 'duels' | 'cricket';
 
 function H2HCard({ record, players, hideSuffix = false }: { record: H2HRecord; players: PlayerProfile[]; hideSuffix?: boolean }) {
   const [expanded, setExpanded] = useState(false);
@@ -87,7 +80,6 @@ function H2HCard({ record, players, hideSuffix = false }: { record: H2HRecord; p
             className="overflow-hidden border-t border-surface2"
           >
             <div className="px-4 py-3 space-y-2">
-              {/* Averages — only for X01 */}
               {!hideSuffix && (
                 <div className="flex justify-between text-sm">
                   <div className="text-left">
@@ -101,7 +93,6 @@ function H2HCard({ record, players, hideSuffix = false }: { record: H2HRecord; p
                   </div>
                 </div>
               )}
-              {/* Best leg — only for X01 */}
               {!hideSuffix && (record.player1BestLeg > 0 || record.player2BestLeg > 0) && (
                 <div className="flex justify-between text-sm">
                   <span className="text-text-primary font-bold">
@@ -130,12 +121,10 @@ export function CompetitionScreen() {
   const navigate = useNavigate();
   const { games, loading } = useHistory();
   const players = useAppStore(s => s.players);
-  const [tab, setTab] = useState<Tab>('ranglijst');
+  const [tab, setTab] = useState<Tab>('duels');
 
   const playerIds = players.map(p => p.id);
-  const standings = getStandings(games, playerIds);
   const h2hRecords = getH2HRecords(games, playerIds);
-  const cricketStandings = getCricketStandings(games, playerIds);
   const cricketH2H = getCricketH2HRecords(games, playerIds);
 
   return (
@@ -151,22 +140,16 @@ export function CompetitionScreen() {
       {/* Tabs */}
       <div className="flex gap-1 px-6 pb-3 shrink-0">
         <button
-          onPointerDown={() => setTab('ranglijst')}
-          className={`flex-1 py-2.5 rounded-xl text-sm font-semibold touch-manipulation flex items-center justify-center gap-2 ${tab === 'ranglijst' ? 'bg-accent text-black' : 'bg-surface2 text-text-secondary'}`}
-        >
-          <Trophy size={16} /> X01
-        </button>
-        <button
           onPointerDown={() => setTab('duels')}
           className={`flex-1 py-2.5 rounded-xl text-sm font-semibold touch-manipulation flex items-center justify-center gap-2 ${tab === 'duels' ? 'bg-accent text-black' : 'bg-surface2 text-text-secondary'}`}
         >
-          <Swords size={16} /> H2H
+          <Swords size={16} /> X01 H2H
         </button>
         <button
           onPointerDown={() => setTab('cricket')}
           className={`flex-1 py-2.5 rounded-xl text-sm font-semibold touch-manipulation flex items-center justify-center gap-2 ${tab === 'cricket' ? 'bg-accent text-black' : 'bg-surface2 text-text-secondary'}`}
         >
-          🏏 Cricket
+          🏏 Cricket H2H
         </button>
       </div>
 
@@ -176,164 +159,11 @@ export function CompetitionScreen() {
           <p className="text-text-secondary text-center py-12">Laden...</p>
         )}
 
-        {/* RANGLIJST TAB */}
-        {!loading && tab === 'ranglijst' && (
-          <motion.div
-            key="ranglijst"
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-          >
-            {standings.length === 0 ? (
-              <div className="text-center text-text-secondary py-12">
-                <TrendingUp size={40} className="mx-auto mb-3 opacity-40" />
-                <p>Nog geen potjes gespeeld.</p>
-              </div>
-            ) : (
-              <div className="bg-surface rounded-2xl overflow-hidden">
-                {/* Table header */}
-                <div className="flex items-center px-4 py-2 border-b border-surface2">
-                  <span className="w-8" />
-                  <span className="flex-1 text-text-secondary text-xs font-semibold uppercase tracking-wide">Speler</span>
-                  <span className="w-10 text-center text-text-secondary text-xs font-semibold uppercase">P</span>
-                  <span className="w-10 text-center text-text-secondary text-xs font-semibold uppercase">W</span>
-                  <span className="w-10 text-center text-text-secondary text-xs font-semibold uppercase">V</span>
-                  <span className="w-16 text-right text-text-secondary text-xs font-semibold uppercase">Gem.</span>
-                </div>
-
-                {standings.map((row, idx) => {
-                  const player = players.find(p => p.id === row.playerId);
-                  if (!player) return null;
-                  return (
-                    <motion.button
-                      key={row.playerId}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: idx * 0.05 }}
-                      onPointerDown={() => navigate(`/speler/${row.playerId}`)}
-                      className="w-full flex items-center px-4 py-3 border-b border-surface2 last:border-0 active:bg-surface2 touch-manipulation"
-                    >
-                      <div className="w-8 flex items-center justify-center">
-                        <Medal rank={idx + 1} />
-                      </div>
-                      <div className="flex-1 flex items-center gap-2">
-                        <PlayerAvatar name={player.name} size="sm" />
-                        <span className="text-text-primary font-semibold text-sm truncate">{player.name}</span>
-                      </div>
-                      <span className="w-10 text-center text-text-secondary text-sm">{row.gamesPlayed}</span>
-                      <span className="w-10 text-center text-accent font-bold text-sm">{row.wins}</span>
-                      <span className="w-10 text-center text-danger text-sm">{row.losses}</span>
-                      <span className="w-16 text-right text-text-primary font-semibold text-sm">{row.average.toFixed(1)}</span>
-                    </motion.button>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* Win% bar chart */}
-            {standings.length >= 2 && (
-              <div className="mt-4 bg-surface rounded-2xl p-4 space-y-3">
-                <h3 className="text-accent text-xs font-bold uppercase tracking-wider">Win-percentage</h3>
-                {standings.map(row => {
-                  const player = players.find(p => p.id === row.playerId);
-                  if (!player) return null;
-                  return (
-                    <div key={row.playerId} className="space-y-1">
-                      <div className="flex justify-between text-xs">
-                        <span className="text-text-secondary">{player.name}</span>
-                        <span className="text-text-primary font-semibold">{row.winPct}%</span>
-                      </div>
-                      <div className="h-2 bg-surface2 rounded-full overflow-hidden">
-                        <motion.div
-                          className="h-full bg-accent rounded-full"
-                          initial={{ width: 0 }}
-                          animate={{ width: `${row.winPct}%` }}
-                          transition={{ duration: 0.6, ease: 'easeOut' }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </motion.div>
-        )}
-
-        {/* CRICKET TAB */}
-        {!loading && tab === 'cricket' && (
-          <motion.div
-            key="cricket"
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="space-y-4"
-          >
-            {/* Cricket standings */}
-            {cricketStandings.length > 0 && (
-              <div className="bg-surface rounded-2xl overflow-hidden">
-                <div className="flex items-center px-4 py-2 border-b border-surface2">
-                  <span className="w-8" />
-                  <span className="flex-1 text-text-secondary text-xs font-semibold uppercase tracking-wide">Speler</span>
-                  <span className="w-10 text-center text-text-secondary text-xs font-semibold uppercase">P</span>
-                  <span className="w-10 text-center text-text-secondary text-xs font-semibold uppercase">W</span>
-                  <span className="w-10 text-center text-text-secondary text-xs font-semibold uppercase">V</span>
-                  <span className="w-14 text-right text-text-secondary text-xs font-semibold uppercase">Win%</span>
-                </div>
-                {cricketStandings.map((row, idx) => {
-                  const player = players.find(p => p.id === row.playerId);
-                  if (!player) return null;
-                  return (
-                    <motion.div
-                      key={row.playerId}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: idx * 0.05 }}
-                      className="flex items-center px-4 py-3 border-b border-surface2 last:border-0"
-                    >
-                      <div className="w-8 flex items-center justify-center">
-                        <Medal rank={idx + 1} />
-                      </div>
-                      <div className="flex-1 flex items-center gap-2">
-                        <PlayerAvatar name={player.name} size="sm" />
-                        <span className="text-text-primary font-semibold text-sm truncate">{player.name}</span>
-                      </div>
-                      <span className="w-10 text-center text-text-secondary text-sm">{row.gamesPlayed}</span>
-                      <span className="w-10 text-center text-accent font-bold text-sm">{row.wins}</span>
-                      <span className="w-10 text-center text-danger text-sm">{row.losses}</span>
-                      <span className="w-14 text-right text-text-primary font-semibold text-sm">{row.winPct}%</span>
-                    </motion.div>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* Cricket H2H matchups */}
-            {cricketH2H.length > 0 && (
-              <div className="space-y-3">
-                <h3 className="text-text-secondary text-xs font-semibold uppercase tracking-wider px-1">Duels</h3>
-                {cricketH2H.map(record => (
-                  <H2HCard
-                    key={`c-${record.player1Id}-${record.player2Id}`}
-                    record={record}
-                    players={players}
-                    hideSuffix
-                  />
-                ))}
-              </div>
-            )}
-
-            {cricketStandings.length === 0 && cricketH2H.length === 0 && (
-              <div className="text-center text-text-secondary py-12">
-                <span className="text-4xl block mb-3">🏏</span>
-                <p>Nog geen cricket gespeeld.</p>
-              </div>
-            )}
-          </motion.div>
-        )}
-
-        {/* H2H TAB */}
+        {/* X01 H2H TAB */}
         {!loading && tab === 'duels' && (
           <motion.div
             key="duels"
-            initial={{ opacity: 0, x: 20 }}
+            initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             className="space-y-3"
           >
@@ -341,7 +171,7 @@ export function CompetitionScreen() {
               <div className="text-center text-text-secondary py-12">
                 <Swords size={40} className="mx-auto mb-3 opacity-40" />
                 <p>Nog geen onderlinge duels.</p>
-                <p className="text-sm mt-1">Speel een potje met meerdere spelers.</p>
+                <p className="text-sm mt-1">Speel een X01-potje met meerdere spelers.</p>
               </div>
             ) : (
               h2hRecords.map(record => (
@@ -349,6 +179,33 @@ export function CompetitionScreen() {
                   key={`${record.player1Id}-${record.player2Id}`}
                   record={record}
                   players={players}
+                />
+              ))
+            )}
+          </motion.div>
+        )}
+
+        {/* CRICKET H2H TAB */}
+        {!loading && tab === 'cricket' && (
+          <motion.div
+            key="cricket"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="space-y-3"
+          >
+            {cricketH2H.length === 0 ? (
+              <div className="text-center text-text-secondary py-12">
+                <span className="text-4xl block mb-3">🏏</span>
+                <p>Nog geen cricket gespeeld.</p>
+                <p className="text-sm mt-1">Speel een Cricket-potje met meerdere spelers.</p>
+              </div>
+            ) : (
+              cricketH2H.map(record => (
+                <H2HCard
+                  key={`c-${record.player1Id}-${record.player2Id}`}
+                  record={record}
+                  players={players}
+                  hideSuffix
                 />
               ))
             )}

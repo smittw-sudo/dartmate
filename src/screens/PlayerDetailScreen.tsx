@@ -49,6 +49,42 @@ export function PlayerDetailScreen() {
   const navigate = useNavigate();
   const player = useAppStore(s => s.players.find(p => p.id === id));
 
+  // All hooks must be declared before any conditional returns
+  const [bestAvg, setBestAvg] = useState<number>(0);
+  const [worstAvg, setWorstAvg] = useState<number>(0);
+  const [highestVisit, setHighestVisit] = useState<number>(0);
+  const [above120, setAbove120] = useState<number>(0);
+
+  useEffect(() => {
+    if (!id) return;
+    fetchGames().then(allGames => {
+      const playerGames = allGames
+        .filter(g => g.isComplete && g.playerIds.includes(id) && g.gameType !== 'cricket');
+
+      // Beste / slechtste pot-gemiddelde
+      const avgs = playerGames.map(g => getGameAverage(g, id)).filter(a => a > 0);
+      if (avgs.length > 0) {
+        setBestAvg(Math.max(...avgs));
+        setWorstAvg(Math.min(...avgs));
+      }
+
+      // Hoogste beurt-score + aantal boven de 120
+      let maxVisit = 0;
+      let count120 = 0;
+      for (const game of playerGames) {
+        for (const leg of game.legs) {
+          for (const visit of leg.visits) {
+            if (visit.playerId !== id || visit.isBust) continue;
+            if (visit.totalScore > maxVisit) maxVisit = visit.totalScore;
+            if (visit.totalScore > 120) count120++;
+          }
+        }
+      }
+      if (maxVisit > 0) setHighestVisit(maxVisit);
+      setAbove120(count120);
+    }).catch(() => {});
+  }, [id]);
+
   if (!player) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -62,22 +98,6 @@ export function PlayerDetailScreen() {
   const cricketWinPct = stats.cricketGamesPlayed > 0
     ? Math.round(stats.cricketGamesWon / stats.cricketGamesPlayed * 100)
     : 0;
-
-  const [bestAvg, setBestAvg] = useState<number>(0);
-  const [worstAvg, setWorstAvg] = useState<number>(0);
-
-  useEffect(() => {
-    if (!id) return;
-    fetchGames().then(allGames => {
-      const avgs = allGames
-        .filter(g => g.isComplete && g.playerIds.includes(id) && g.gameType !== 'cricket')
-        .map(g => getGameAverage(g, id))
-        .filter(a => a > 0);
-      if (avgs.length === 0) return;
-      setBestAvg(Math.max(...avgs));
-      setWorstAvg(Math.min(...avgs));
-    }).catch(() => {});
-  }, [id]);
 
   return (
     <div className="h-screen bg-background flex flex-col">
@@ -111,6 +131,8 @@ export function PlayerDetailScreen() {
           <StatRow label="3-pijl gemiddelde" value={getAverageFromStats(stats).toFixed(1)} />
           {bestAvg > 0 && <StatRow label="Beste pot-gemiddelde" value={bestAvg.toFixed(1)} />}
           {worstAvg > 0 && <StatRow label="Slechtste pot-gemiddelde" value={worstAvg.toFixed(1)} />}
+          {highestVisit > 0 && <StatRow label="Hoogste beurt-score" value={highestVisit} />}
+          {above120 > 0 && <StatRow label="Boven de 120" value={above120} />}
           <StatRow label="180's" value={stats.oneEighties} />
           <StatRow label="140+" value={stats.hundredFortyPlus} />
           <StatRow label="100+" value={stats.hundredPlus} />

@@ -92,6 +92,12 @@ export function PlayerDetailScreen() {
 
         <Section title="Scoring (X01)">
           <StatRow label="3-pijl gemiddelde" value={getAverageFromStats(stats).toFixed(1)} />
+          {stats.bestGameAverage > 0 && (
+            <StatRow label="Beste pot-gemiddelde" value={stats.bestGameAverage.toFixed(1)} />
+          )}
+          {stats.worstGameAverage > 0 && (
+            <StatRow label="Slechtste pot-gemiddelde" value={stats.worstGameAverage.toFixed(1)} />
+          )}
           <StatRow label="Totaal pijlen gegooid" value={stats.totalDartsThrown} />
           <StatRow label="Totaal gescoord" value={stats.totalScored} />
           <StatRow label="180's" value={stats.oneEighties} />

@@ -110,6 +110,14 @@ export function updateStatsAfterGame(
   stats.checkoutAttempts += checkoutAttempts;
   if (checkoutHit) stats.checkoutHits += 1;
 
+  if (dartsThisGame > 0) {
+    const gameAvg = calculateAverage(scoredThisGame, dartsThisGame);
+    if (gameAvg > stats.bestGameAverage) stats.bestGameAverage = gameAvg;
+    if (stats.worstGameAverage === 0 || gameAvg < stats.worstGameAverage) {
+      stats.worstGameAverage = gameAvg;
+    }
+  }
+
   // Broken check: was this player firstPlayerThisGame but lost?
   if (game.legs.length > 0) {
     const firstPlayer = game.legs[0].startingPlayerId;

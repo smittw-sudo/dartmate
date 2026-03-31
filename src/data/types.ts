@@ -26,6 +26,8 @@ export interface PlayerStats {
   checkoutHits: number;
   busts: number;
   bestLegDarts: number;
+  bestGameAverage: number;
+  worstGameAverage: number;
   cricketGamesPlayed: number;
   cricketGamesWon: number;
 }
@@ -133,6 +135,8 @@ export const defaultStats = (): PlayerStats => ({
   checkoutHits: 0,
   busts: 0,
   bestLegDarts: 0,
+  bestGameAverage: 0,
+  worstGameAverage: 0,
   cricketGamesPlayed: 0,
   cricketGamesWon: 0,
 });

@@ -55,10 +55,38 @@ function DoublePicker({ remaining, title, onPick, onCancel }: DoublePickerProps)
   );
 }
 
+function DartsCountPicker({ onPick, onCancel }: { onPick: (n: number) => void; onCancel: () => void }) {
+  return (
+    <div className="w-full">
+      <p className="text-text-secondary text-sm text-center mb-3">Hoeveel pijlen gebruikt?</p>
+      <div className="grid grid-cols-3 gap-3">
+        {[1, 2, 3].map(n => (
+          <button
+            key={n}
+            onPointerDown={() => onPick(n)}
+            className="h-16 rounded-xl text-2xl font-black bg-surface2 text-text-primary active:bg-accent active:text-black touch-manipulation active:scale-95 transition-transform"
+          >
+            {n}
+          </button>
+        ))}
+      </div>
+      <button
+        onPointerDown={onCancel}
+        className="w-full mt-2 py-2 text-text-secondary text-sm touch-manipulation"
+      >
+        Annuleren
+      </button>
+    </div>
+  );
+}
+
+type Step = 'none' | 'askDouble' | 'askDarts';
+
 export function TotalScoreInput() {
   const [value, setValue] = useState('0');
-  const [askDouble, setAskDouble] = useState(false);
+  const [step, setStep] = useState<Step>('none');
   const [pendingScore, setPendingScore] = useState(0);
+  const [pendingDouble, setPendingDouble] = useState<number | null>(null);
 
   const submitVisit = useGameStore(s => s.submitVisit);
   const bustCurrentVisit = useGameStore(s => s.bustCurrentVisit);
@@ -71,13 +99,13 @@ export function TotalScoreInput() {
   const numVal = parseInt(value || '0', 10);
   const isInCheckoutRange = remaining >= 2 && remaining <= 170;
 
-  // Stuur een visit met 3 virtuele pijlen (correct voor gemiddelde)
-  const doSubmit = (score: number, checkoutDouble?: number) => {
+  const doSubmit = (score: number, checkoutDouble: number | undefined, dartsCount: number) => {
     haptics.confirm();
     const dart: DartThrow = { segment: score, multiplier: checkoutDouble ? 2 : 1, score };
-    submitVisit([dart], { dartsCount: 3, checkoutDouble });
+    submitVisit([dart], { dartsCount, checkoutDouble });
     setValue('0');
-    setAskDouble(false);
+    setStep('none');
+    setPendingDouble(null);
   };
 
   const handleConfirm = () => {
@@ -95,28 +123,41 @@ export function TotalScoreInput() {
     if (score === remaining) {
       // Uitgooi — vraag welke dubbel
       setPendingScore(score);
-      setAskDouble(true);
+      setStep('askDouble');
       return;
     }
 
-    // Gewone beurt
-    doSubmit(score);
+    // Gewone beurt (altijd 3 pijlen in totaalmodus)
+    doSubmit(score, undefined, 3);
   };
 
   const handleBust = () => {
     bustCurrentVisit();
     setValue('0');
-    setAskDouble(false);
-  };
-
-  const handleDoublePick = (seg: number) => {
-    doSubmit(pendingScore, seg);
+    setStep('none');
+    setPendingDouble(null);
   };
 
   const isInvalid = numVal > 0 && !isValidX01Score(numVal);
 
-  // Toon dubbels-picker nadat totaalscore = remaining
-  if (askDouble) {
+  // Stap 2: hoeveel pijlen?
+  if (step === 'askDarts') {
+    return (
+      <div className="w-full flex flex-col items-center gap-4 px-2">
+        <div className="bg-surface2 rounded-2xl px-6 py-3 text-center">
+          <span className="text-4xl font-black text-accent tabular">{pendingScore}</span>
+          <span className="text-text-secondary text-sm ml-2">uitgegooid</span>
+        </div>
+        <DartsCountPicker
+          onPick={(n) => doSubmit(pendingScore, pendingDouble ?? undefined, n)}
+          onCancel={() => { setStep('none'); setValue('0'); setPendingDouble(null); }}
+        />
+      </div>
+    );
+  }
+
+  // Stap 1: op welke dubbel?
+  if (step === 'askDouble') {
     return (
       <div className="w-full flex flex-col items-center gap-4 px-2">
         <div className="bg-surface2 rounded-2xl px-6 py-3 text-center">
@@ -126,8 +167,8 @@ export function TotalScoreInput() {
         <DoublePicker
           remaining={remaining}
           title="Op welke dubbel uitgegooid?"
-          onPick={handleDoublePick}
-          onCancel={() => { setAskDouble(false); setValue('0'); }}
+          onPick={(seg) => { setPendingDouble(seg); setStep('askDarts'); }}
+          onCancel={() => { setStep('none'); setValue('0'); }}
         />
       </div>
     );
@@ -159,7 +200,9 @@ export function TotalScoreInput() {
             title=""
             onPick={(seg) => {
               const dScore = seg === 50 ? 50 : seg * 2;
-              doSubmit(dScore, seg);
+              setPendingScore(dScore);
+              setPendingDouble(seg);
+              setStep('askDarts');
             }}
           />
         </div>

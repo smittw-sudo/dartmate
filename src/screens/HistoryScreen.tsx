@@ -6,7 +6,7 @@ import { useAppStore } from '../store/appStore';
 import { ArrowLeft, ChevronDown, ChevronUp, Trophy, Clock, Trash2, AlertCircle } from 'lucide-react';
 import { GameRecord } from '../data/types';
 import { deleteGame } from '../lib/supabase';
-import { rebuildPlayerStats } from '../engine/statsEngine';
+import { rebuildPlayerStats, getGameAverage } from '../engine/statsEngine';
 
 function formatDuration(seconds: number): string {
   const m = Math.floor(seconds / 60);
@@ -59,7 +59,20 @@ function GameCard({
               </span>
             </div>
             <div className="text-text-secondary text-sm">
-              {game.playerIds.map(pid => players.find(p => p.id === pid)?.name ?? '?').join(' vs ')}
+              {game.playerIds.map((pid, i) => {
+                const name = players.find(p => p.id === pid)?.name ?? '?';
+                if (game.gameType === 'cricket') return (
+                  <span key={pid}>{i > 0 ? ' vs ' : ''}{name}</span>
+                );
+                const avg = getGameAverage(game, pid);
+                return (
+                  <span key={pid}>
+                    {i > 0 ? ' vs ' : ''}
+                    {name}
+                    {avg > 0 && <span className="text-accent text-xs ml-1">({avg.toFixed(1)})</span>}
+                  </span>
+                );
+              })}
             </div>
           </div>
           {winner && (

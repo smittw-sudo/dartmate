@@ -1,5 +1,19 @@
 import { GameRecord, PlayerProfile, PlayerStats, defaultStats } from '../data/types';
 
+export function getGameAverage(game: GameRecord, playerId: string): number {
+  if (game.gameType === 'cricket') return 0;
+  let totalDarts = 0;
+  let totalScored = 0;
+  for (const leg of game.legs) {
+    for (const visit of leg.visits) {
+      if (visit.playerId !== playerId) continue;
+      if (!visit.isBust) totalScored += visit.totalScore;
+      totalDarts += visit.dartsCount ?? visit.darts.length;
+    }
+  }
+  return calculateAverage(totalScored, totalDarts);
+}
+
 /** Rebuild all stats from scratch by replaying games in chronological order.
  *  Used after deleting a game so stats stay accurate. */
 export function rebuildPlayerStats(

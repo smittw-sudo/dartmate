@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAppStore } from '../store/appStore';
 import { PlayerAvatar } from '../components/ui/PlayerAvatar';
 import { ArrowLeft } from 'lucide-react';
-import { getWinPercentage, getAverageFromStats, getCheckoutPercentage, getTopDoubles } from '../engine/statsEngine';
+import { getWinPercentage, getAverageFromStats, getCheckoutPercentage, getTopDoubles, getGameAverage } from '../engine/statsEngine';
+import { fetchGames } from '../lib/supabase';
 
 function StatRow({ label, value }: { label: string; value: string | number }) {
   return (
@@ -62,6 +63,22 @@ export function PlayerDetailScreen() {
     ? Math.round(stats.cricketGamesWon / stats.cricketGamesPlayed * 100)
     : 0;
 
+  const [bestAvg, setBestAvg] = useState<number>(0);
+  const [worstAvg, setWorstAvg] = useState<number>(0);
+
+  useEffect(() => {
+    if (!id) return;
+    fetchGames().then(allGames => {
+      const avgs = allGames
+        .filter(g => g.isComplete && g.playerIds.includes(id) && g.gameType !== 'cricket')
+        .map(g => getGameAverage(g, id))
+        .filter(a => a > 0);
+      if (avgs.length === 0) return;
+      setBestAvg(Math.max(...avgs));
+      setWorstAvg(Math.min(...avgs));
+    }).catch(() => {});
+  }, [id]);
+
   return (
     <div className="h-screen bg-background flex flex-col">
       <div className="flex items-center gap-3 px-6 pt-8 pb-4 shrink-0">
@@ -92,14 +109,8 @@ export function PlayerDetailScreen() {
 
         <Section title="Scoring (X01)">
           <StatRow label="3-pijl gemiddelde" value={getAverageFromStats(stats).toFixed(1)} />
-          {stats.bestGameAverage > 0 && (
-            <StatRow label="Beste pot-gemiddelde" value={stats.bestGameAverage.toFixed(1)} />
-          )}
-          {stats.worstGameAverage > 0 && (
-            <StatRow label="Slechtste pot-gemiddelde" value={stats.worstGameAverage.toFixed(1)} />
-          )}
-          <StatRow label="Totaal pijlen gegooid" value={stats.totalDartsThrown} />
-          <StatRow label="Totaal gescoord" value={stats.totalScored} />
+          {bestAvg > 0 && <StatRow label="Beste pot-gemiddelde" value={bestAvg.toFixed(1)} />}
+          {worstAvg > 0 && <StatRow label="Slechtste pot-gemiddelde" value={worstAvg.toFixed(1)} />}
           <StatRow label="180's" value={stats.oneEighties} />
           <StatRow label="140+" value={stats.hundredFortyPlus} />
           <StatRow label="100+" value={stats.hundredPlus} />

@@ -14,7 +14,7 @@ import { BrokenAnimation } from '../components/animations/BrokenAnimation';
 import { LegWonAnimation } from '../components/animations/LegWonAnimation';
 import { Button } from '../components/ui/Button';
 import { Pause, RotateCcw, Settings } from 'lucide-react';
-import { calculateAverage } from '../engine/statsEngine';
+import { calculateAverage, getAverageFromStats } from '../engine/statsEngine';
 
 export function ActiveGameScreen() {
   const navigate = useNavigate();
@@ -95,10 +95,7 @@ export function ActiveGameScreen() {
 
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-2 bg-surface shrink-0">
-        <button onPointerDown={handlePause} className="flex items-center gap-2 p-2 touch-manipulation">
-          <Pause size={20} className="text-text-secondary" />
-          <span className="text-text-secondary text-sm">Pauze</span>
-        </button>
+        <div className="w-16" />
 
         <div className="flex items-center gap-2">
           <span className="text-text-primary font-bold">{gameTypeLabel}</span>
@@ -123,6 +120,7 @@ export function ActiveGameScreen() {
           const avg = getAverage(pid);
           const lastScore = getLastVisitScore(pid);
           const legsWon = game.legsWon[pid] ?? 0;
+          const careerAvg = !isCricket && player ? getAverageFromStats(player.stats) : 0;
 
           return (
             <motion.div
@@ -143,7 +141,12 @@ export function ActiveGameScreen() {
                 {isCricket ? '—' : score}
               </div>
 
-              <div className="text-text-secondary text-xs">avg {avg.toFixed(1)}</div>
+              <div className="text-text-secondary text-xs">
+                gem. {avg.toFixed(1)}
+                {!isCricket && careerAvg > 0 && (
+                  <span className="opacity-40 ml-1">/ {careerAvg.toFixed(1)}</span>
+                )}
+              </div>
               {isCurrent && (
                 <div className="text-accent text-xs font-bold uppercase tracking-wide">Aan de beurt</div>
               )}
@@ -183,6 +186,17 @@ export function ActiveGameScreen() {
           </button>
         </div>
       )}
+
+      {/* Pauze-knop onderaan — bereikbaar met duim */}
+      <div className="px-3 pb-2 shrink-0">
+        <button
+          onPointerDown={handlePause}
+          className="w-full py-2.5 flex items-center justify-center gap-2 bg-surface rounded-xl touch-manipulation active:bg-surface2 transition-colors"
+        >
+          <Pause size={18} className="text-text-secondary" />
+          <span className="text-text-secondary text-sm">Pauze</span>
+        </button>
+      </div>
 
       {/* Score input */}
       <div className="flex-1 overflow-y-auto px-3 pb-3">

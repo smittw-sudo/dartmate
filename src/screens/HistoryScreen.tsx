@@ -135,6 +135,11 @@ function GameCard({
   );
 }
 
+type GameFilter = 'all' | 'x01_501' | 'x01_301' | 'x01_101' | 'cricket';
+const FILTER_LABELS: Record<GameFilter, string> = {
+  all: 'Alles', x01_501: '501', x01_301: '301', x01_101: '101', cricket: 'Cricket',
+};
+
 export function HistoryScreen() {
   const navigate = useNavigate();
   const { games, loading, loadAll } = useHistory();
@@ -143,6 +148,7 @@ export function HistoryScreen() {
   const loadAllProfiles = useAppStore(s => s.loadAll);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState('');
+  const [filter, setFilter] = useState<GameFilter>('all');
 
   const handleDelete = async (game: GameRecord) => {
     if (deleting) return;
@@ -195,12 +201,27 @@ export function HistoryScreen() {
         {loading && (
           <p className="text-text-secondary text-center py-8">Laden...</p>
         )}
+        {!loading && games.length > 0 && (
+          <div className="flex gap-1.5 pb-1 overflow-x-auto">
+            {(Object.keys(FILTER_LABELS) as GameFilter[]).map(f => (
+              <button
+                key={f}
+                onPointerDown={() => setFilter(f)}
+                className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap touch-manipulation transition-colors ${
+                  filter === f ? 'bg-accent text-black' : 'bg-surface2 text-text-secondary'
+                }`}
+              >
+                {FILTER_LABELS[f]}
+              </button>
+            ))}
+          </div>
+        )}
         {!loading && games.length === 0 && (
           <div className="text-center text-text-secondary py-12">
             <p className="text-lg">Nog geen potjes gespeeld.</p>
           </div>
         )}
-        {games.map(game => (
+        {(filter === 'all' ? games : games.filter(g => g.gameType === filter)).map(game => (
           <GameCard
             key={game.id}
             game={game}

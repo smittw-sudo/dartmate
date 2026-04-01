@@ -175,7 +175,7 @@ export function TotalScoreInput() {
   }
 
   return (
-    <div className="w-full flex flex-col items-center gap-4">
+    <div className="w-full flex flex-col items-center gap-4 pb-8">
       {isInvalid && (
         <p className="text-warning text-sm text-center">Ongeldige score</p>
       )}

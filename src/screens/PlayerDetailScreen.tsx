@@ -7,6 +7,8 @@ import { ArrowLeft } from 'lucide-react';
 import { getWinPercentage, getAverageFromStats, getCheckoutPercentage, getTopDoubles, getGameAverage } from '../engine/statsEngine';
 import { fetchGames } from '../lib/supabase';
 
+type Period = 'all' | 'month' | 'quarter';
+
 function StatRow({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="flex justify-between items-center py-2 border-b border-surface2">
@@ -35,6 +37,29 @@ function WinBar({ pct, label }: { pct: number; label: string }) {
   );
 }
 
+function ScoreChart({ bands }: { bands: number[] }) {
+  const labels = ['0–60', '61–100', '101–120', '121–140', '141–180'];
+  const max = Math.max(...bands, 1);
+  return (
+    <div className="pt-1 pb-1 space-y-1.5">
+      {labels.map((label, i) => (
+        <div key={label} className="flex items-center gap-2">
+          <span className="text-text-secondary text-xs w-16 shrink-0">{label}</span>
+          <div className="flex-1 h-4 bg-surface2 rounded-full overflow-hidden">
+            <motion.div
+              className="h-full bg-accent rounded-full"
+              initial={{ width: 0 }}
+              animate={{ width: `${(bands[i] / max) * 100}%` }}
+              transition={{ duration: 0.5, ease: 'easeOut', delay: i * 0.07 }}
+            />
+          </div>
+          <span className="text-text-secondary text-xs w-6 text-right shrink-0">{bands[i]}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="bg-surface rounded-2xl p-4 space-y-1">
@@ -49,17 +74,30 @@ export function PlayerDetailScreen() {
   const navigate = useNavigate();
   const player = useAppStore(s => s.players.find(p => p.id === id));
 
-  // All hooks must be declared before any conditional returns
+  const [period, setPeriod] = useState<Period>('all');
   const [bestAvg, setBestAvg] = useState<number>(0);
   const [worstAvg, setWorstAvg] = useState<number>(0);
   const [highestVisit, setHighestVisit] = useState<number>(0);
   const [above120, setAbove120] = useState<number>(0);
+  const [avgDartsPerLeg, setAvgDartsPerLeg] = useState<number>(0);
+  const [scoreBands, setScoreBands] = useState<number[]>([0, 0, 0, 0, 0]);
 
   useEffect(() => {
     if (!id) return;
+    // Reset bij periode-wijziging
+    setBestAvg(0); setWorstAvg(0); setHighestVisit(0); setAbove120(0);
+    setAvgDartsPerLeg(0); setScoreBands([0, 0, 0, 0, 0]);
+
+    const cutoff = period === 'all' ? null
+      : new Date(Date.now() - (period === 'month' ? 30 : 90) * 86400000);
+
     fetchGames().then(allGames => {
-      const playerGames = allGames
-        .filter(g => g.isComplete && g.playerIds.includes(id) && g.gameType !== 'cricket');
+      const playerGames = allGames.filter(g =>
+        g.isComplete &&
+        g.playerIds.includes(id) &&
+        g.gameType !== 'cricket' &&
+        (!cutoff || new Date(g.date) >= cutoff)
+      );
 
       // Beste / slechtste pot-gemiddelde
       const avgs = playerGames.map(g => getGameAverage(g, id)).filter(a => a > 0);
@@ -68,22 +106,45 @@ export function PlayerDetailScreen() {
         setWorstAvg(Math.min(...avgs));
       }
 
-      // Hoogste beurt-score + aantal boven de 120
+      // Hoogste beurt-score, boven 120, score-verdeling
       let maxVisit = 0;
       let count120 = 0;
+      const bands = [0, 0, 0, 0, 0];
+
+      // Gem. pijlen per gewonnen leg
+      let dartsInWonLegs = 0;
+      let wonLegCount = 0;
+
       for (const game of playerGames) {
         for (const leg of game.legs) {
+          // Pijlen per gewonnen leg
+          if (leg.winnerId === id) {
+            const legDarts = leg.visits
+              .filter(v => v.playerId === id)
+              .reduce((s, v) => s + (v.dartsCount ?? v.darts.length), 0);
+            if (legDarts > 0) { dartsInWonLegs += legDarts; wonLegCount++; }
+          }
+
           for (const visit of leg.visits) {
             if (visit.playerId !== id || visit.isBust) continue;
-            if (visit.totalScore > maxVisit) maxVisit = visit.totalScore;
-            if (visit.totalScore > 120) count120++;
+            const s = visit.totalScore;
+            if (s > maxVisit) maxVisit = s;
+            if (s > 120) count120++;
+            if (s <= 60) bands[0]++;
+            else if (s <= 100) bands[1]++;
+            else if (s <= 120) bands[2]++;
+            else if (s <= 140) bands[3]++;
+            else bands[4]++;
           }
         }
       }
+
       if (maxVisit > 0) setHighestVisit(maxVisit);
       setAbove120(count120);
+      setScoreBands(bands);
+      if (wonLegCount > 0) setAvgDartsPerLeg(Math.round(dartsInWonLegs / wonLegCount * 10) / 10);
     }).catch(() => {});
-  }, [id]);
+  }, [id, period]);
 
   if (!player) {
     return (
@@ -98,6 +159,8 @@ export function PlayerDetailScreen() {
   const cricketWinPct = stats.cricketGamesPlayed > 0
     ? Math.round(stats.cricketGamesWon / stats.cricketGamesPlayed * 100)
     : 0;
+
+  const periodLabel = period === 'month' ? ' · 30 dagen' : period === 'quarter' ? ' · 3 mnd' : '';
 
   return (
     <div className="h-screen bg-background flex flex-col">
@@ -127,7 +190,22 @@ export function PlayerDetailScreen() {
           <StatRow label="Keer gebroken" value={stats.timesFirstAndBroke} />
         </Section>
 
-        <Section title="Scoring (X01)">
+        {/* Periode-filter */}
+        <div className="flex gap-1.5">
+          {(['all', 'month', 'quarter'] as Period[]).map(p => (
+            <button
+              key={p}
+              onPointerDown={() => setPeriod(p)}
+              className={`px-3 py-1 rounded-full text-xs font-semibold touch-manipulation transition-colors ${
+                period === p ? 'bg-accent text-black' : 'bg-surface2 text-text-secondary'
+              }`}
+            >
+              {p === 'all' ? 'Alles' : p === 'month' ? '30 dagen' : '3 maanden'}
+            </button>
+          ))}
+        </div>
+
+        <Section title={`Scoring (X01)${periodLabel}`}>
           <StatRow label="3-pijl gemiddelde" value={getAverageFromStats(stats).toFixed(1)} />
           {bestAvg > 0 && <StatRow label="Beste pot-gemiddelde" value={bestAvg.toFixed(1)} />}
           {worstAvg > 0 && <StatRow label="Slechtste pot-gemiddelde" value={worstAvg.toFixed(1)} />}
@@ -137,6 +215,13 @@ export function PlayerDetailScreen() {
           <StatRow label="140+" value={stats.hundredFortyPlus} />
           <StatRow label="100+" value={stats.hundredPlus} />
           <StatRow label="Beste leg (pijlen)" value={stats.bestLegDarts || '—'} />
+          {avgDartsPerLeg > 0 && <StatRow label="Gem. pijlen per leg" value={avgDartsPerLeg.toFixed(1)} />}
+          {scoreBands.some(b => b > 0) && (
+            <>
+              <div className="text-text-secondary text-xs pt-2 pb-0.5 uppercase tracking-wider">Score-verdeling</div>
+              <ScoreChart bands={scoreBands} />
+            </>
+          )}
         </Section>
 
         <Section title="Uitgooien (X01)">

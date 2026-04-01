@@ -24,6 +24,9 @@ export function ActiveGameScreen() {
   const showAnimation = useGameStore(s => s.showAnimation);
   const animationData = useGameStore(s => s.animationData);
   const clearAnimation = useGameStore(s => s.clearAnimation);
+  const completedLegs = useGameStore(s => s.completedLegs);
+  const pendingCricketFinish = useGameStore(s => s.pendingCricketFinish);
+  const confirmCricketFinish = useGameStore(s => s.confirmCricketFinish);
 
   const players = useAppStore(s => s.players);
   const inputMode = useAppStore(s => s.inputMode);
@@ -62,6 +65,19 @@ export function ActiveGameScreen() {
     return calculateAverage(scored, darts);
   };
 
+  const getDartsThrown = (playerId: string) => {
+    let total = 0;
+    for (const leg of completedLegs) {
+      for (const v of leg.visits) {
+        if (v.playerId === playerId) total += v.dartsCount ?? v.darts.length;
+      }
+    }
+    for (const v of game.visits) {
+      if (v.playerId === playerId) total += v.dartsCount ?? v.darts.length;
+    }
+    return total;
+  };
+
   const getLastVisitScore = (playerId: string) => {
     const visits = getPlayerVisits(playerId).filter(v => !v.isBust);
     if (visits.length === 0) return null;
@@ -76,6 +92,31 @@ export function ActiveGameScreen() {
 
   return (
     <div className="h-screen bg-background flex flex-col overflow-hidden">
+      {/* Cricket finish dart count modal */}
+      {pendingCricketFinish && (
+        <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-50 px-6">
+          <div className="bg-surface rounded-2xl p-6 w-full max-w-sm space-y-4">
+            <p className="text-text-primary font-bold text-center text-lg">
+              Hoeveel pijlen deze beurt?
+            </p>
+            <p className="text-text-secondary text-sm text-center">
+              Met hoeveel pijlen heb je de laatste slag gemaakt?
+            </p>
+            <div className="grid grid-cols-3 gap-3">
+              {[1, 2, 3].map(n => (
+                <button
+                  key={n}
+                  onPointerDown={() => confirmCricketFinish(n)}
+                  className="h-16 rounded-xl text-2xl font-black bg-surface2 text-text-primary active:bg-accent active:text-black touch-manipulation active:scale-95 transition-transform"
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Animations */}
       <OneEightyAnimation
         visible={showAnimation === 'oneEighty'}
@@ -121,6 +162,7 @@ export function ActiveGameScreen() {
           const lastScore = getLastVisitScore(pid);
           const legsWon = game.legsWon[pid] ?? 0;
           const careerAvg = !isCricket && player ? getAverageFromStats(player.stats) : 0;
+          const dartsThrown = getDartsThrown(pid);
 
           return (
             <motion.div
@@ -147,6 +189,9 @@ export function ActiveGameScreen() {
                   <span className="opacity-40 ml-1">/ {careerAvg.toFixed(1)}</span>
                 )}
               </div>
+              {dartsThrown > 0 && (
+                <div className="text-text-secondary text-xs opacity-60">{dartsThrown} pijlen</div>
+              )}
               {isCurrent && (
                 <div className="text-accent text-xs font-bold uppercase tracking-wide">Aan de beurt</div>
               )}

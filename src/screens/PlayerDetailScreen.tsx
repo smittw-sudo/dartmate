@@ -81,12 +81,15 @@ export function PlayerDetailScreen() {
   const [above120, setAbove120] = useState<number>(0);
   const [avgDartsPerLeg, setAvgDartsPerLeg] = useState<number>(0);
   const [scoreBands, setScoreBands] = useState<number[]>([0, 0, 0, 0, 0]);
+  const [cricketAvgDarts, setCricketAvgDarts] = useState<number>(0);
+  const [cricketAvgFinish, setCricketAvgFinish] = useState<number>(0);
 
   useEffect(() => {
     if (!id) return;
     // Reset bij periode-wijziging
     setBestAvg(0); setWorstAvg(0); setHighestVisit(0); setAbove120(0);
     setAvgDartsPerLeg(0); setScoreBands([0, 0, 0, 0, 0]);
+    setCricketAvgDarts(0); setCricketAvgFinish(0);
 
     const cutoff = period === 'all' ? null
       : new Date(Date.now() - (period === 'month' ? 30 : 90) * 86400000);
@@ -143,6 +146,36 @@ export function PlayerDetailScreen() {
       setAbove120(count120);
       setScoreBands(bands);
       if (wonLegCount > 0) setAvgDartsPerLeg(Math.round(dartsInWonLegs / wonLegCount * 10) / 10);
+
+      // Cricket dart stats (always all-time, independent of period filter)
+      const cricketGames = allGames.filter(g =>
+        g.isComplete && g.playerIds.includes(id) && g.gameType === 'cricket'
+      );
+      let totalCricketDarts = 0;
+      let gamesWithDarts = 0;
+      let totalFinishDarts = 0;
+      let finishCount = 0;
+      for (const cg of cricketGames) {
+        let gameDarts = 0;
+        for (const leg of cg.legs) {
+          for (const v of leg.visits) {
+            if (v.playerId !== id || !v.dartsCount) continue;
+            gameDarts += v.dartsCount;
+          }
+          // Finishing darts: last visit of the winning player in this leg
+          if (leg.winnerId === id) {
+            const myVisits = leg.visits.filter(v => v.playerId === id && v.dartsCount);
+            if (myVisits.length > 0) {
+              const last = myVisits[myVisits.length - 1];
+              totalFinishDarts += last.dartsCount!;
+              finishCount++;
+            }
+          }
+        }
+        if (gameDarts > 0) { totalCricketDarts += gameDarts; gamesWithDarts++; }
+      }
+      if (gamesWithDarts > 0) setCricketAvgDarts(Math.round(totalCricketDarts / gamesWithDarts * 10) / 10);
+      if (finishCount > 0) setCricketAvgFinish(Math.round(totalFinishDarts / finishCount * 10) / 10);
     }).catch(() => {});
   }, [id, period]);
 
@@ -243,6 +276,8 @@ export function PlayerDetailScreen() {
           {stats.cricketGamesPlayed > 0 && (
             <WinBar pct={cricketWinPct} label="Win-percentage" />
           )}
+          {cricketAvgDarts > 0 && <StatRow label="Gem. pijlen per spel" value={cricketAvgDarts.toFixed(1)} />}
+          {cricketAvgFinish > 0 && <StatRow label="Gem. eindpijlen" value={cricketAvgFinish.toFixed(1)} />}
         </Section>
       </div>
     </div>

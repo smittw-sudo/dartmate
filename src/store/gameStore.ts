@@ -24,11 +24,13 @@ interface GameStore {
   completedLegs: LegRecord[];
   showAnimation: 'oneEighty' | 'bust' | 'legWon' | 'broken' | null;
   animationData: string;
+  pendingCricketFinish: { winnerId: string | null } | null;
 
   startGame: (config: GameConfig) => void;
   submitVisit: (darts: DartThrow[], options?: { checkoutDouble?: number; dartsCount?: number }) => void;
   submitCricketHits: (hits: number) => void;
   submitCricketVisit: (entries: { target: CricketTarget; hits: number }[]) => void;
+  confirmCricketFinish: (dartsCount: number) => void;
   bustCurrentVisit: () => void;
   undoLastVisit: () => void;
   addDartToVisit: (dart: DartThrow) => void;
@@ -45,6 +47,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   completedLegs: [],
   showAnimation: null,
   animationData: '',
+  pendingCricketFinish: null,
 
   startGame: (config: GameConfig) => {
     const startingScore = getStartingScore(config.gameType);
@@ -247,7 +250,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   submitCricketVisit: (entries: { target: CricketTarget; hits: number }[]) => {
-    const { game, completedLegs } = get();
+    const { game } = get();
     if (!game) return;
 
     const currentPlayerId = game.playerIds[game.currentPlayerIndex];
@@ -256,30 +259,62 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const newState = applyMultiTargetHits(game, currentPlayerId, entries);
     const result = isCricketGameComplete(newState);
 
+    // Create a Visit record for this cricket turn so darts are tracked
+    const hitsCount = entries.filter(e => e.hits > 0).length;
+    const dartsUsed = hitsCount === 0 ? 3 : hitsCount; // miss = assume 3 darts thrown
+    const cricketVisit: Visit = {
+      playerId: currentPlayerId,
+      darts: [],
+      totalScore: 0,
+      remainingAfter: 0,
+      isBust: false,
+      dartsCount: dartsUsed,
+    };
+    const stateWithVisit = { ...newState, visits: [...game.visits, cricketVisit] };
+
     if (result.complete) {
-      const leg: LegRecord = {
-        legNumber: game.currentLeg,
-        setNumber: game.currentSet,
-        startingPlayerId: game.firstPlayerThisLeg,
-        winnerId: result.winnerId,
-        visits: game.visits,
-        checkoutDouble: null,
-      };
-
-      if (result.winnerId !== game.firstPlayerThisGame) {
-        set({ showAnimation: 'broken', animationData: game.firstPlayerThisGame });
-      } else {
-        set({ showAnimation: 'legWon', animationData: result.winnerId ?? '' });
-      }
-
+      // Pause finalization — ask for exact dart count on the finishing throw
       set({
-        game: { ...newState, isGameOver: true, winnerId: result.winnerId },
-        completedLegs: [...completedLegs, leg],
+        game: stateWithVisit,
+        pendingCricketFinish: { winnerId: result.winnerId },
       });
       return;
     }
 
-    set({ game: newState });
+    set({ game: stateWithVisit });
+  },
+
+  confirmCricketFinish: (dartsCount: number) => {
+    const { game, completedLegs, pendingCricketFinish } = get();
+    if (!game || !pendingCricketFinish) return;
+
+    // Update the last visit with the confirmed dart count
+    const visits = [...game.visits];
+    if (visits.length > 0) {
+      visits[visits.length - 1] = { ...visits[visits.length - 1], dartsCount };
+    }
+
+    const { winnerId } = pendingCricketFinish;
+    const leg: LegRecord = {
+      legNumber: game.currentLeg,
+      setNumber: game.currentSet,
+      startingPlayerId: game.firstPlayerThisLeg,
+      winnerId,
+      visits,
+      checkoutDouble: null,
+    };
+
+    if (winnerId !== game.firstPlayerThisGame) {
+      set({ showAnimation: 'broken', animationData: game.firstPlayerThisGame });
+    } else {
+      set({ showAnimation: 'legWon', animationData: winnerId ?? '' });
+    }
+
+    set({
+      game: { ...game, visits, isGameOver: true, winnerId },
+      completedLegs: [...completedLegs, leg],
+      pendingCricketFinish: null,
+    });
   },
 
   bustCurrentVisit: () => {

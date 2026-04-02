@@ -14,22 +14,32 @@ export function DoublesSetupScreen() {
   const players = useAppStore(s => s.players);
   const startSession = useDoublesStore(s => s.startSession);
 
-  const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
+  const [selectedPlayerIds, setSelectedPlayerIds] = useState<string[]>([]);
   const [count, setCount] = useState(10);
   const [order, setOrder] = useState<'random' | 'sequence'>('random');
   const [weakestFirst, setWeakestFirst] = useState(false);
 
-  const selectedPlayer = players.find(p => p.id === selectedPlayerId);
+  const togglePlayer = (id: string) =>
+    setSelectedPlayerIds(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    );
+
+  const firstPlayer = players.find(p => p.id === selectedPlayerIds[0]);
 
   const handleStart = () => {
-    if (!selectedPlayer) return;
+    if (selectedPlayerIds.length === 0) return;
+    const playerNames: Record<string, string> = {};
+    for (const pid of selectedPlayerIds) {
+      const p = players.find(x => x.id === pid);
+      if (p) playerNames[pid] = p.name;
+    }
     startSession({
-      playerId: selectedPlayer.id,
-      playerName: selectedPlayer.name,
+      playerIds: selectedPlayerIds,
+      playerNames,
       count,
       order,
       weakestFirst,
-      preferredDoubles: selectedPlayer.preferredDoubles ?? {},
+      preferredDoubles: firstPlayer?.preferredDoubles ?? {},
     });
     navigate('/dubbels/spel');
   };
@@ -52,19 +62,22 @@ export function DoublesSetupScreen() {
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
           <h2 className="text-text-secondary text-xs font-semibold uppercase tracking-wider mb-3">Speler</h2>
           <div className="space-y-2">
-            {players.map(p => (
-              <button
-                key={p.id}
-                onPointerDown={() => setSelectedPlayerId(p.id)}
-                className={`w-full bg-surface rounded-2xl p-4 flex items-center gap-3 touch-manipulation border-2 transition-colors ${
-                  selectedPlayerId === p.id ? 'border-accent' : 'border-transparent'
-                }`}
-              >
-                <PlayerAvatar name={p.name} size="md" />
-                <span className="text-text-primary font-semibold flex-1 text-left">{p.name}</span>
-                {selectedPlayerId === p.id && <Check size={18} className="text-accent shrink-0" />}
-              </button>
-            ))}
+            {players.map(p => {
+              const isSelected = selectedPlayerIds.includes(p.id);
+              return (
+                <button
+                  key={p.id}
+                  onPointerDown={() => togglePlayer(p.id)}
+                  className={`w-full bg-surface rounded-2xl p-4 flex items-center gap-3 touch-manipulation border-2 transition-colors ${
+                    isSelected ? 'border-accent' : 'border-transparent'
+                  }`}
+                >
+                  <PlayerAvatar name={p.name} size="md" />
+                  <span className="text-text-primary font-semibold flex-1 text-left">{p.name}</span>
+                  {isSelected && <Check size={18} className="text-accent shrink-0" />}
+                </button>
+              );
+            })}
             {players.length === 0 && (
               <p className="text-text-secondary text-sm text-center py-4">Geen spelers gevonden</p>
             )}
@@ -116,11 +129,11 @@ export function DoublesSetupScreen() {
         {/* Weakest first toggle */}
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
           <button
-            onPointerDown={() => selectedPlayer && setWeakestFirst(v => !v)}
-            disabled={!selectedPlayer}
+            onPointerDown={() => selectedPlayerIds.length > 0 && setWeakestFirst(v => !v)}
+            disabled={selectedPlayerIds.length === 0}
             className={`w-full bg-surface rounded-2xl p-4 flex items-center justify-between touch-manipulation border-2 transition-colors ${
               weakestFirst ? 'border-accent' : 'border-transparent'
-            } ${!selectedPlayer ? 'opacity-40' : ''}`}
+            } ${selectedPlayerIds.length === 0 ? 'opacity-40' : ''}`}
           >
             <div className="text-left">
               <div className="text-text-primary font-bold">Zwakste eerst</div>
@@ -140,7 +153,7 @@ export function DoublesSetupScreen() {
           size="xl"
           fullWidth
           onPointerDown={handleStart}
-          disabled={!selectedPlayer}
+          disabled={selectedPlayerIds.length === 0}
         >
           Start Oefenen
         </Button>

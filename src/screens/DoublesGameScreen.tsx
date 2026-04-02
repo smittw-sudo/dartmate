@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Check } from 'lucide-react';
 import { useDoublesStore } from '../store/doublesStore';
 import { Button } from '../components/ui/Button';
 import { haptics } from '../utils/haptics';
@@ -24,6 +24,9 @@ export function DoublesGameScreen() {
 
   if (!session || session.isComplete) return null;
 
+  const isMultiplayer = session.playerIds.length > 1;
+  const currentPlayerId = session.playerIds[session.currentPlayerIndex];
+  const currentPlayerName = session.playerNames[currentPlayerId];
   const currentDouble = session.sequence[session.currentIndex];
   const total = session.sequence.length;
   const progress = session.currentIndex / total;
@@ -31,11 +34,20 @@ export function DoublesGameScreen() {
   const wasSkipped = session.skippedDoubles.includes(currentDouble);
   const canSkip = !wasSkipped && remaining > 1;
 
-  // Trailing streak: how many consecutive results had attempts === 1
+  // Players who already finished this double (before current player in turn order)
+  const doneThisDouble = session.playerIds
+    .slice(0, session.currentPlayerIndex)
+    .map(pid => ({
+      name: session.playerNames[pid],
+      result: session.results[pid][session.results[pid].length - 1],
+    }));
+
+  // Streak: trailing consecutive first-attempt hits for current player
+  const currentPlayerResults = session.results[currentPlayerId] ?? [];
   const streak = (() => {
     let s = 0;
-    for (let i = session.results.length - 1; i >= 0; i--) {
-      if (session.results[i].attempts === 1) s++;
+    for (let i = currentPlayerResults.length - 1; i >= 0; i--) {
+      if (currentPlayerResults[i].attempts === 1) s++;
       else break;
     }
     return s;
@@ -67,9 +79,9 @@ export function DoublesGameScreen() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col select-none">
+    <div className="h-screen bg-background flex flex-col select-none">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 pt-8 pb-4">
+      <div className="flex items-center justify-between px-4 pt-8 pb-4 shrink-0">
         <button onPointerDown={handleBack} className="p-2 touch-manipulation">
           <ArrowLeft size={24} className="text-text-secondary" />
         </button>
@@ -80,7 +92,7 @@ export function DoublesGameScreen() {
       </div>
 
       {/* Progress bar */}
-      <div className="mx-6 h-2 bg-surface2 rounded-full overflow-hidden mb-8">
+      <div className="mx-6 h-2 bg-surface2 rounded-full overflow-hidden mb-6 shrink-0">
         <motion.div
           className="h-full bg-accent rounded-full"
           animate={{ width: `${progress * 100}%` }}
@@ -96,17 +108,17 @@ export function DoublesGameScreen() {
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.8 }}
-            className="flex justify-center mb-4"
+            className="flex justify-center mb-3 shrink-0"
           >
             <span className="bg-accent/20 text-accent text-sm font-bold px-4 py-1.5 rounded-full">
-              Streak: {streak} op rij!
+              {isMultiplayer ? `${currentPlayerName}: ` : ''}Streak: {streak} op rij!
             </span>
           </motion.div>
         )}
       </AnimatePresence>
 
       {/* Main double display */}
-      <div className="flex-1 flex flex-col items-center justify-center gap-6 px-6">
+      <div className="flex-1 flex flex-col items-center justify-center gap-4 px-6 min-h-0">
         <motion.div
           key={currentDouble}
           initial={{ opacity: 0, scale: 0.7 }}
@@ -120,19 +132,39 @@ export function DoublesGameScreen() {
 
         <div className="text-center space-y-1">
           {wasSkipped && (
-            <p className="text-warning text-xs font-semibold uppercase tracking-wide mb-1">Eerder overgeslagen</p>
+            <p className="text-warning text-xs font-semibold uppercase tracking-wide">Eerder overgeslagen</p>
           )}
-          <p className="text-text-secondary text-lg font-semibold">
+          {isMultiplayer && (
+            <p className="text-accent font-bold text-lg">{currentPlayerName}</p>
+          )}
+          <p className="text-text-secondary text-base font-semibold">
             Poging {session.currentAttempts + 1}
           </p>
           {session.currentDarts > 0 && (
             <p className="text-text-secondary text-sm">{session.currentDarts} pijlen gegooid</p>
           )}
         </div>
+
+        {/* Done players for this double */}
+        {doneThisDouble.length > 0 && (
+          <div className="flex flex-col gap-1 w-full max-w-xs">
+            {doneThisDouble.map(({ name, result }) => (
+              <div key={name} className="flex items-center justify-between bg-surface2 rounded-xl px-3 py-2">
+                <div className="flex items-center gap-2">
+                  <Check size={14} className="text-accent shrink-0" />
+                  <span className="text-text-secondary text-sm">{name}</span>
+                </div>
+                <span className="text-text-secondary text-xs">
+                  {result?.attempts} poging{result?.attempts !== 1 ? 'en' : ''} · {result?.dartsThrown} pijlen
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Action buttons */}
-      <div className="px-6 pb-safe-bottom pb-8 space-y-3">
+      <div className="px-6 pb-8 shrink-0 space-y-3">
         <div className="grid grid-cols-2 gap-3">
           <Button variant="danger" size="xl" fullWidth onPointerDown={handleMiss}>
             Mis
@@ -198,6 +230,7 @@ export function DoublesGameScreen() {
             className="absolute inset-0 flex items-center justify-center z-50 pointer-events-none"
           >
             <div className="bg-accent rounded-3xl px-10 py-8 text-center shadow-2xl">
+              {isMultiplayer && <p className="text-black text-xl font-bold mb-1">{currentPlayerName}</p>}
               <p className="text-black text-3xl font-black">Raak in</p>
               <p className="text-black text-3xl font-black">1 poging!</p>
             </div>

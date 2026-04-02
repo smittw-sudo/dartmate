@@ -7,21 +7,22 @@ export interface DoubleResult {
 }
 
 export interface DoublesSession {
-  playerId: string;
-  playerName: string;
+  playerIds: string[];
+  playerNames: Record<string, string>; // id → name
   sequence: number[];
-  currentIndex: number;
-  currentAttempts: number;
-  currentDarts: number;
-  results: DoubleResult[];
+  currentIndex: number;         // which double in sequence
+  currentPlayerIndex: number;   // whose turn it is
+  currentAttempts: number;      // attempts for current player on current double
+  currentDarts: number;         // darts thrown by current player on current double
+  results: Record<string, DoubleResult[]>; // id → results per double
   skippedDoubles: number[];
   startTime: number;
   isComplete: boolean;
 }
 
 interface DoublesSessionConfig {
-  playerId: string;
-  playerName: string;
+  playerIds: string[];
+  playerNames: Record<string, string>;
   count: number;
   order: 'random' | 'sequence';
   weakestFirst: boolean;
@@ -63,15 +64,19 @@ export const useDoublesStore = create<DoublesStore>((set, get) => ({
 
   startSession: (config) => {
     const sequence = buildSequence(config);
+    const results: Record<string, DoubleResult[]> = {};
+    for (const pid of config.playerIds) results[pid] = [];
+
     set({
       session: {
-        playerId: config.playerId,
-        playerName: config.playerName,
+        playerIds: config.playerIds,
+        playerNames: config.playerNames,
         sequence,
         currentIndex: 0,
+        currentPlayerIndex: 0,
         currentAttempts: 0,
         currentDarts: 0,
-        results: [],
+        results,
         skippedDoubles: [],
         startTime: Date.now(),
         isComplete: false,
@@ -95,37 +100,57 @@ export const useDoublesStore = create<DoublesStore>((set, get) => ({
     const { session } = get();
     if (!session || session.isComplete) return;
 
-    const finalAttempts = session.currentAttempts + 1;
-    const finalDarts = session.currentDarts + dartsUsed;
+    const currentPlayerId = session.playerIds[session.currentPlayerIndex];
     const currentDouble = session.sequence[session.currentIndex];
 
     const newResult: DoubleResult = {
       double: currentDouble,
-      dartsThrown: finalDarts,
-      attempts: finalAttempts,
+      dartsThrown: session.currentDarts + dartsUsed,
+      attempts: session.currentAttempts + 1,
     };
 
-    const newResults = [...session.results, newResult];
-    const nextIndex = session.currentIndex + 1;
-    const isComplete = nextIndex >= session.sequence.length;
+    const newResults = {
+      ...session.results,
+      [currentPlayerId]: [...session.results[currentPlayerId], newResult],
+    };
 
-    set({
-      session: {
-        ...session,
-        results: newResults,
-        currentIndex: nextIndex,
-        currentAttempts: 0,
-        currentDarts: 0,
-        isComplete,
-      },
-    });
+    const nextPlayerIndex = session.currentPlayerIndex + 1;
+    const allPlayersDone = nextPlayerIndex >= session.playerIds.length;
+
+    if (allPlayersDone) {
+      // All players finished this double — advance to next
+      const nextDoubleIndex = session.currentIndex + 1;
+      const isComplete = nextDoubleIndex >= session.sequence.length;
+      set({
+        session: {
+          ...session,
+          results: newResults,
+          currentIndex: nextDoubleIndex,
+          currentPlayerIndex: 0,
+          currentAttempts: 0,
+          currentDarts: 0,
+          isComplete,
+        },
+      });
+    } else {
+      // Next player's turn at the same double
+      set({
+        session: {
+          ...session,
+          results: newResults,
+          currentPlayerIndex: nextPlayerIndex,
+          currentAttempts: 0,
+          currentDarts: 0,
+        },
+      });
+    }
   },
 
   skipCurrent: () => {
     const { session } = get();
     if (!session || session.isComplete) return;
     const remaining = session.sequence.length - session.currentIndex;
-    if (remaining <= 1) return; // can't skip the last one
+    if (remaining <= 1) return;
 
     const currentDouble = session.sequence[session.currentIndex];
     const newSequence = [...session.sequence];
@@ -136,6 +161,7 @@ export const useDoublesStore = create<DoublesStore>((set, get) => ({
       session: {
         ...session,
         sequence: newSequence,
+        currentPlayerIndex: 0,
         currentAttempts: 0,
         currentDarts: 0,
         skippedDoubles: [...session.skippedDoubles, currentDouble],

@@ -16,6 +16,7 @@ export function DoublesGameScreen() {
 
   const [showHitModal, setShowHitModal] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
+  const [celebrationName, setCelebrationName] = useState('');
 
   useEffect(() => {
     if (!session) { navigate('/dubbels'); return; }
@@ -32,17 +33,16 @@ export function DoublesGameScreen() {
   const progress = session.currentIndex / total;
   const remaining = total - session.currentIndex;
   const wasSkipped = session.skippedDoubles.includes(currentDouble);
-  const canSkip = !wasSkipped && remaining > 1;
 
-  // Players who already finished this double (before current player in turn order)
-  const doneThisDouble = session.playerIds
-    .slice(0, session.currentPlayerIndex)
-    .map(pid => ({
-      name: session.playerNames[pid],
-      result: session.results[pid][session.results[pid].length - 1],
-    }));
+  // Skip only allowed when nobody has attempted yet this double
+  const anyAttempts = Object.values(session.playerAttempts).some(a => a > 0);
+  const canSkip = !wasSkipped && remaining > 1 && !anyAttempts;
 
-  // Streak: trailing consecutive first-attempt hits for current player
+  // Current player's running counters
+  const myAttempts = session.playerAttempts[currentPlayerId] ?? 0;
+  const myDarts = session.playerDarts[currentPlayerId] ?? 0;
+
+  // Streak for current player
   const currentPlayerResults = session.results[currentPlayerId] ?? [];
   const streak = (() => {
     let s = 0;
@@ -59,9 +59,10 @@ export function DoublesGameScreen() {
   };
 
   const handleHit = (darts: 1 | 2 | 3) => {
-    const isFirstAttempt = session.currentAttempts === 0;
+    const isFirstAttempt = myAttempts === 0;
     haptics.legWon();
     if (isFirstAttempt) {
+      setCelebrationName(currentPlayerName);
       setShowCelebration(true);
       setTimeout(() => {
         setShowCelebration(false);
@@ -81,7 +82,7 @@ export function DoublesGameScreen() {
   return (
     <div className="h-screen bg-background flex flex-col select-none">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 pt-8 pb-4 shrink-0">
+      <div className="flex items-center justify-between px-4 pt-8 pb-3 shrink-0">
         <button onPointerDown={handleBack} className="p-2 touch-manipulation">
           <ArrowLeft size={24} className="text-text-secondary" />
         </button>
@@ -92,7 +93,7 @@ export function DoublesGameScreen() {
       </div>
 
       {/* Progress bar */}
-      <div className="mx-6 h-2 bg-surface2 rounded-full overflow-hidden mb-6 shrink-0">
+      <div className="mx-6 h-2 bg-surface2 rounded-full overflow-hidden mb-4 shrink-0">
         <motion.div
           className="h-full bg-accent rounded-full"
           animate={{ width: `${progress * 100}%` }}
@@ -100,15 +101,50 @@ export function DoublesGameScreen() {
         />
       </div>
 
+      {/* Player cards (multiplayer) */}
+      {isMultiplayer && (
+        <div className="px-4 mb-3 shrink-0">
+          <div className="flex gap-2">
+            {session.playerIds.map((pid, idx) => {
+              const isDone = session.playersDoneThisDouble.includes(pid);
+              const isCurrent = idx === session.currentPlayerIndex;
+              const att = session.playerAttempts[pid] ?? 0;
+              return (
+                <div
+                  key={pid}
+                  className={`flex-1 rounded-2xl p-3 text-center border-2 transition-colors ${
+                    isCurrent ? 'bg-surface border-accent' : isDone ? 'bg-surface border-accent/30' : 'bg-surface border-transparent'
+                  }`}
+                >
+                  <p className={`text-xs font-bold truncate mb-1 ${isCurrent ? 'text-accent' : isDone ? 'text-text-secondary' : 'text-text-secondary'}`}>
+                    {session.playerNames[pid]}
+                  </p>
+                  {isDone ? (
+                    <Check size={16} className="text-accent mx-auto" />
+                  ) : (
+                    <p className={`text-lg font-black tabular ${isCurrent ? 'text-text-primary' : 'text-text-secondary opacity-40'}`}>
+                      {att > 0 ? att : '—'}
+                    </p>
+                  )}
+                  {isCurrent && !isDone && (
+                    <p className="text-accent text-xs font-semibold mt-0.5">aan de beurt</p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Streak badge */}
       <AnimatePresence>
         {streak >= 2 && (
           <motion.div
-            key="streak"
+            key={`streak-${currentPlayerId}`}
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.8 }}
-            className="flex justify-center mb-3 shrink-0"
+            className="flex justify-center mb-2 shrink-0"
           >
             <span className="bg-accent/20 text-accent text-sm font-bold px-4 py-1.5 rounded-full">
               {isMultiplayer ? `${currentPlayerName}: ` : ''}Streak: {streak} op rij!
@@ -118,7 +154,7 @@ export function DoublesGameScreen() {
       </AnimatePresence>
 
       {/* Main double display */}
-      <div className="flex-1 flex flex-col items-center justify-center gap-4 px-6 min-h-0">
+      <div className="flex-1 flex flex-col items-center justify-center gap-3 px-6 min-h-0">
         <motion.div
           key={currentDouble}
           initial={{ opacity: 0, scale: 0.7 }}
@@ -134,33 +170,15 @@ export function DoublesGameScreen() {
           {wasSkipped && (
             <p className="text-warning text-xs font-semibold uppercase tracking-wide">Eerder overgeslagen</p>
           )}
-          {isMultiplayer && (
-            <p className="text-accent font-bold text-lg">{currentPlayerName}</p>
+          {!isMultiplayer && (
+            <p className="text-text-secondary text-base font-semibold">
+              Poging {myAttempts + 1}
+            </p>
           )}
-          <p className="text-text-secondary text-base font-semibold">
-            Poging {session.currentAttempts + 1}
-          </p>
-          {session.currentDarts > 0 && (
-            <p className="text-text-secondary text-sm">{session.currentDarts} pijlen gegooid</p>
+          {myDarts > 0 && (
+            <p className="text-text-secondary text-sm">{myDarts} pijlen gegooid</p>
           )}
         </div>
-
-        {/* Done players for this double */}
-        {doneThisDouble.length > 0 && (
-          <div className="flex flex-col gap-1 w-full max-w-xs">
-            {doneThisDouble.map(({ name, result }) => (
-              <div key={name} className="flex items-center justify-between bg-surface2 rounded-xl px-3 py-2">
-                <div className="flex items-center gap-2">
-                  <Check size={14} className="text-accent shrink-0" />
-                  <span className="text-text-secondary text-sm">{name}</span>
-                </div>
-                <span className="text-text-secondary text-xs">
-                  {result?.attempts} poging{result?.attempts !== 1 ? 'en' : ''} · {result?.dartsThrown} pijlen
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
       </div>
 
       {/* Action buttons */}
@@ -183,7 +201,7 @@ export function DoublesGameScreen() {
         )}
       </div>
 
-      {/* Hit modal overlay */}
+      {/* Hit modal */}
       <AnimatePresence>
         {showHitModal && (
           <motion.div
@@ -220,7 +238,7 @@ export function DoublesGameScreen() {
         )}
       </AnimatePresence>
 
-      {/* First-attempt celebration overlay */}
+      {/* First-attempt celebration */}
       <AnimatePresence>
         {showCelebration && (
           <motion.div
@@ -230,7 +248,7 @@ export function DoublesGameScreen() {
             className="absolute inset-0 flex items-center justify-center z-50 pointer-events-none"
           >
             <div className="bg-accent rounded-3xl px-10 py-8 text-center shadow-2xl">
-              {isMultiplayer && <p className="text-black text-xl font-bold mb-1">{currentPlayerName}</p>}
+              {isMultiplayer && <p className="text-black text-xl font-bold mb-1">{celebrationName}</p>}
               <p className="text-black text-3xl font-black">Raak in</p>
               <p className="text-black text-3xl font-black">1 poging!</p>
             </div>

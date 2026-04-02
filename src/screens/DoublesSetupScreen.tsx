@@ -47,7 +47,7 @@ export function DoublesSetupScreen() {
         </div>
       </div>
 
-      <div className="flex-1 px-6 pb-32 overflow-y-auto space-y-6">
+      <div className="flex-1 px-6 pb-4 overflow-y-auto space-y-6">
         {/* Player selection */}
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
           <h2 className="text-text-secondary text-xs font-semibold uppercase tracking-wider mb-3">Speler</h2>
@@ -134,7 +134,7 @@ export function DoublesSetupScreen() {
       </div>
 
       {/* Start button */}
-      <div className="fixed bottom-0 left-0 right-0 p-6 bg-background border-t border-surface2">
+      <div className="shrink-0 px-6 pb-8 pt-3 border-t border-surface2">
         <Button
           variant="primary"
           size="xl"

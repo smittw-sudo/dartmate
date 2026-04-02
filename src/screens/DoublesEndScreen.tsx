@@ -41,7 +41,7 @@ export function DoublesEndScreen() {
   const handleHome = () => { reset(); navigate('/'); };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col pt-safe-top pb-safe-bottom">
+    <div className="h-screen bg-background flex flex-col pt-safe-top pb-safe-bottom">
       <div className="flex-1 px-6 py-8 overflow-y-auto space-y-6">
         {/* Title */}
         <motion.div

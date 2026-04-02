@@ -7,7 +7,7 @@ import { useDoublesStore } from '../store/doublesStore';
 import { PlayerAvatar } from '../components/ui/PlayerAvatar';
 import { Button } from '../components/ui/Button';
 
-const COUNT_OPTIONS = [5, 10, 15, 20];
+const COUNT_OPTIONS = [20, 15, 10, 5];
 
 export function DoublesSetupScreen() {
   const navigate = useNavigate();

@@ -11,6 +11,9 @@ import { ActiveGameScreen } from './screens/ActiveGameScreen';
 import { EndGameScreen } from './screens/EndGameScreen';
 import { HistoryScreen } from './screens/HistoryScreen';
 import { CompetitionScreen } from './screens/CompetitionScreen';
+import { DoublesSetupScreen } from './screens/DoublesSetupScreen';
+import { DoublesGameScreen } from './screens/DoublesGameScreen';
+import { DoublesEndScreen } from './screens/DoublesEndScreen';
 import { Target } from 'lucide-react';
 
 export default function App() {
@@ -59,6 +62,9 @@ export default function App() {
         <Route path="/einde" element={<EndGameScreen />} />
         <Route path="/geschiedenis" element={<HistoryScreen />} />
         <Route path="/competitie" element={<CompetitionScreen />} />
+        <Route path="/dubbels" element={<DoublesSetupScreen />} />
+        <Route path="/dubbels/spel" element={<DoublesGameScreen />} />
+        <Route path="/dubbels/einde" element={<DoublesEndScreen />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>

@@ -35,8 +35,6 @@ export function NumericPad({
     else onChange(value.slice(0, -1));
   };
 
-  const keys = ['1','2','3','4','5','6','7','8','9','0'];
-
   return (
     <div className="flex flex-col gap-2 w-full max-w-xs mx-auto">
       {/* Display */}
@@ -46,7 +44,7 @@ export function NumericPad({
 
       {/* Keys */}
       <div className="grid grid-cols-3 gap-2">
-        {keys.map(k => (
+        {['1','2','3','4','5','6','7','8','9'].map(k => (
           <button
             key={k}
             onPointerDown={() => handleDigit(k)}
@@ -56,6 +54,15 @@ export function NumericPad({
             {k}
           </button>
         ))}
+        {/* Row 4: empty | 0 | delete */}
+        <div />
+        <button
+          onPointerDown={() => handleDigit('0')}
+          disabled={disabled}
+          className="h-14 bg-surface2 rounded-xl text-2xl font-bold text-text-primary active:bg-inactive touch-manipulation select-none"
+        >
+          0
+        </button>
         <button
           onPointerDown={handleDelete}
           disabled={disabled}

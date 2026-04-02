@@ -14,6 +14,7 @@ export interface DoublesSession {
   currentAttempts: number;
   currentDarts: number;
   results: DoubleResult[];
+  skippedDoubles: number[];
   startTime: number;
   isComplete: boolean;
 }
@@ -32,6 +33,7 @@ interface DoublesStore {
   startSession: (config: DoublesSessionConfig) => void;
   registerMiss: () => void;
   registerHit: (dartsUsed: 1 | 2 | 3) => void;
+  skipCurrent: () => void;
   reset: () => void;
 }
 
@@ -52,8 +54,8 @@ function buildSequence(config: DoublesSessionConfig): number[] {
     return shuffled.slice(0, config.count);
   }
 
-  // sequence: D1 → D{count}
-  return all.slice(0, config.count);
+  // sequence: D20 → D{21 - count}
+  return all.slice(0, config.count).reverse();
 }
 
 export const useDoublesStore = create<DoublesStore>((set, get) => ({
@@ -70,6 +72,7 @@ export const useDoublesStore = create<DoublesStore>((set, get) => ({
         currentAttempts: 0,
         currentDarts: 0,
         results: [],
+        skippedDoubles: [],
         startTime: Date.now(),
         isComplete: false,
       },
@@ -114,6 +117,28 @@ export const useDoublesStore = create<DoublesStore>((set, get) => ({
         currentAttempts: 0,
         currentDarts: 0,
         isComplete,
+      },
+    });
+  },
+
+  skipCurrent: () => {
+    const { session } = get();
+    if (!session || session.isComplete) return;
+    const remaining = session.sequence.length - session.currentIndex;
+    if (remaining <= 1) return; // can't skip the last one
+
+    const currentDouble = session.sequence[session.currentIndex];
+    const newSequence = [...session.sequence];
+    newSequence.splice(session.currentIndex, 1);
+    newSequence.push(currentDouble);
+
+    set({
+      session: {
+        ...session,
+        sequence: newSequence,
+        currentAttempts: 0,
+        currentDarts: 0,
+        skippedDoubles: [...session.skippedDoubles, currentDouble],
       },
     });
   },

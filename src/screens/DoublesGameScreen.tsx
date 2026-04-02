@@ -11,6 +11,7 @@ export function DoublesGameScreen() {
   const session = useDoublesStore(s => s.session);
   const registerMiss = useDoublesStore(s => s.registerMiss);
   const registerHit = useDoublesStore(s => s.registerHit);
+  const skipCurrent = useDoublesStore(s => s.skipCurrent);
   const reset = useDoublesStore(s => s.reset);
 
   const [showHitModal, setShowHitModal] = useState(false);
@@ -26,6 +27,9 @@ export function DoublesGameScreen() {
   const currentDouble = session.sequence[session.currentIndex];
   const total = session.sequence.length;
   const progress = session.currentIndex / total;
+  const remaining = total - session.currentIndex;
+  const wasSkipped = session.skippedDoubles.includes(currentDouble);
+  const canSkip = !wasSkipped && remaining > 1;
 
   // Trailing streak: how many consecutive results had attempts === 1
   const streak = (() => {
@@ -115,6 +119,9 @@ export function DoublesGameScreen() {
         </motion.div>
 
         <div className="text-center space-y-1">
+          {wasSkipped && (
+            <p className="text-warning text-xs font-semibold uppercase tracking-wide mb-1">Eerder overgeslagen</p>
+          )}
           <p className="text-text-secondary text-lg font-semibold">
             Poging {session.currentAttempts + 1}
           </p>
@@ -134,6 +141,14 @@ export function DoublesGameScreen() {
             Raak!
           </Button>
         </div>
+        {canSkip && (
+          <button
+            onPointerDown={skipCurrent}
+            className="w-full py-3 text-text-secondary text-sm font-semibold touch-manipulation active:text-text-primary transition-colors"
+          >
+            Sla over → komt later terug
+          </button>
+        )}
       </div>
 
       {/* Hit modal overlay */}

@@ -106,8 +106,8 @@ export function DoublesSetupScreen() {
                   order === o ? 'border-accent' : 'border-transparent'
                 }`}
               >
-                <div className="text-text-primary font-bold">{o === 'random' ? 'Willekeurig' : 'D1 → D20'}</div>
-                <div className="text-text-secondary text-xs">{o === 'random' ? 'Gemengde volgorde' : 'Oplopend'}</div>
+                <div className="text-text-primary font-bold">{o === 'random' ? 'Willekeurig' : 'D20 → D1'}</div>
+                <div className="text-text-secondary text-xs">{o === 'random' ? 'Gemengde volgorde' : 'Aflopend'}</div>
               </button>
             ))}
           </div>

@@ -14,11 +14,12 @@ function hashColor(name: string): string {
 
 interface PlayerAvatarProps {
   name: string;
+  avatarUrl?: string;
   size?: 'sm' | 'md' | 'lg' | 'xl';
   className?: string;
 }
 
-export function PlayerAvatar({ name, size = 'md', className = '' }: PlayerAvatarProps) {
+export function PlayerAvatar({ name, avatarUrl, size = 'md', className = '' }: PlayerAvatarProps) {
   const color = hashColor(name);
   const initials = name.trim().split(/\s+/).map(w => w[0]?.toUpperCase() ?? '').slice(0, 2).join('');
 
@@ -29,9 +30,19 @@ export function PlayerAvatar({ name, size = 'md', className = '' }: PlayerAvatar
     xl: 'w-20 h-20 text-2xl',
   };
 
+  if (avatarUrl) {
+    return (
+      <div
+        className={`rounded-full overflow-hidden shrink-0 ${sizes[size]} ${className}`}
+      >
+        <img src={avatarUrl} alt={name} className="w-full h-full object-cover" />
+      </div>
+    );
+  }
+
   return (
     <div
-      className={`rounded-full flex items-center justify-center font-bold text-black ${sizes[size]} ${className}`}
+      className={`rounded-full flex items-center justify-center font-bold text-black shrink-0 ${sizes[size]} ${className}`}
       style={{ backgroundColor: color }}
     >
       {initials}

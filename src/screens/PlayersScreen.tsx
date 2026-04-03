@@ -93,9 +93,14 @@ export function PlayersScreen() {
             onPointerDown={() => navigate(`/speler/${p.id}`)}
             className="w-full bg-surface rounded-2xl p-4 flex items-center gap-4 active:bg-surface2 touch-manipulation"
           >
-            <PlayerAvatar name={p.name} size="lg" />
+            <PlayerAvatar name={p.name} avatarUrl={p.avatarUrl} size="lg" />
             <div className="flex-1 text-left">
-              <div className="text-text-primary font-semibold text-lg">{p.name}</div>
+              <div className="flex items-baseline gap-2">
+                <div className="text-text-primary font-semibold text-lg">{p.name}</div>
+                {p.nickname && (
+                  <div className="text-accent text-sm font-medium">"{p.nickname}"</div>
+                )}
+              </div>
               <div className="text-text-secondary text-sm">
                 {p.stats.gamesPlayed} potjes · {getWinPercentage(p.stats)}% gewonnen · avg {getAverageFromStats(p.stats).toFixed(1)}
               </div>

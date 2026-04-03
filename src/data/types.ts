@@ -5,6 +5,9 @@ export type InputMode = 'total' | 'dartboard';
 export interface PlayerProfile {
   id: string;
   name: string;
+  nickname?: string;
+  bio?: string;
+  avatarUrl?: string;
   createdAt: string;
   stats: PlayerStats;
   preferredDoubles: Record<number, number>; // double number -> hit count

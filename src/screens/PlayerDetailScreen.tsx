@@ -1,11 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from '../store/appStore';
 import { PlayerAvatar } from '../components/ui/PlayerAvatar';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Pencil, Camera, X } from 'lucide-react';
 import { getWinPercentage, getAverageFromStats, getCheckoutPercentage, getTopDoubles, getGameAverage } from '../engine/statsEngine';
 import { fetchGames } from '../lib/supabase';
+import { Button } from '../components/ui/Button';
 
 type Period = 'all' | 'month' | 'quarter';
 
@@ -69,10 +70,32 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
+async function compressImage(file: File, maxSize = 400): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
+      const w = Math.round(img.width * scale);
+      const h = Math.round(img.height * scale);
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d')!;
+      ctx.drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL('image/jpeg', 0.82));
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
 export function PlayerDetailScreen() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const player = useAppStore(s => s.players.find(p => p.id === id));
+  const updatePlayer = useAppStore(s => s.updatePlayer);
 
   const [period, setPeriod] = useState<Period>('all');
   const [bestAvg, setBestAvg] = useState<number>(0);
@@ -84,9 +107,48 @@ export function PlayerDetailScreen() {
   const [cricketAvgDarts, setCricketAvgDarts] = useState<number>(0);
   const [cricketAvgFinish, setCricketAvgFinish] = useState<number>(0);
 
+  // Edit sheet state
+  const [showEdit, setShowEdit] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editNickname, setEditNickname] = useState('');
+  const [editBio, setEditBio] = useState('');
+  const [editAvatarUrl, setEditAvatarUrl] = useState<string | undefined>(undefined);
+  const [saving, setSaving] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const openEdit = () => {
+    if (!player) return;
+    setEditName(player.name);
+    setEditNickname(player.nickname ?? '');
+    setEditBio(player.bio ?? '');
+    setEditAvatarUrl(player.avatarUrl);
+    setShowEdit(true);
+  };
+
+  const handlePhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const compressed = await compressImage(file);
+    setEditAvatarUrl(compressed);
+    e.target.value = '';
+  };
+
+  const handleSave = async () => {
+    if (!player || !editName.trim()) return;
+    setSaving(true);
+    await updatePlayer({
+      ...player,
+      name: editName.trim(),
+      nickname: editNickname.trim() || undefined,
+      bio: editBio.trim() || undefined,
+      avatarUrl: editAvatarUrl,
+    });
+    setSaving(false);
+    setShowEdit(false);
+  };
+
   useEffect(() => {
     if (!id) return;
-    // Reset bij periode-wijziging
     setBestAvg(0); setWorstAvg(0); setHighestVisit(0); setAbove120(0);
     setAvgDartsPerLeg(0); setScoreBands([0, 0, 0, 0, 0]);
     setCricketAvgDarts(0); setCricketAvgFinish(0);
@@ -102,25 +164,20 @@ export function PlayerDetailScreen() {
         (!cutoff || new Date(g.date) >= cutoff)
       );
 
-      // Beste / slechtste pot-gemiddelde
       const avgs = playerGames.map(g => getGameAverage(g, id)).filter(a => a > 0);
       if (avgs.length > 0) {
         setBestAvg(Math.max(...avgs));
         setWorstAvg(Math.min(...avgs));
       }
 
-      // Hoogste beurt-score, boven 120, score-verdeling
       let maxVisit = 0;
       let count120 = 0;
       const bands = [0, 0, 0, 0, 0];
-
-      // Gem. pijlen per gewonnen leg
       let dartsInWonLegs = 0;
       let wonLegCount = 0;
 
       for (const game of playerGames) {
         for (const leg of game.legs) {
-          // Pijlen per gewonnen leg
           if (leg.winnerId === id) {
             const legDarts = leg.visits
               .filter(v => v.playerId === id)
@@ -147,7 +204,6 @@ export function PlayerDetailScreen() {
       setScoreBands(bands);
       if (wonLegCount > 0) setAvgDartsPerLeg(Math.round(dartsInWonLegs / wonLegCount * 10) / 10);
 
-      // Cricket dart stats (always all-time, independent of period filter)
       const cricketGames = allGames.filter(g =>
         g.isComplete && g.playerIds.includes(id) && g.gameType === 'cricket'
       );
@@ -162,7 +218,6 @@ export function PlayerDetailScreen() {
             if (v.playerId !== id || !v.dartsCount) continue;
             gameDarts += v.dartsCount;
           }
-          // Finishing darts: last visit of the winning player in this leg
           if (leg.winnerId === id) {
             const myVisits = leg.visits.filter(v => v.playerId === id && v.dartsCount);
             if (myVisits.length > 0) {
@@ -197,17 +252,31 @@ export function PlayerDetailScreen() {
 
   return (
     <div className="h-screen bg-background flex flex-col">
+      {/* Header */}
       <div className="flex items-center gap-3 px-6 pt-8 pb-4 shrink-0">
         <button onPointerDown={() => navigate(-1)} className="p-2 touch-manipulation">
           <ArrowLeft size={24} className="text-text-primary" />
         </button>
-        <h1 className="text-2xl font-bold text-text-primary flex-1">{player.name}</h1>
+        <div className="flex-1">
+          <h1 className="text-2xl font-bold text-text-primary leading-tight">{player.name}</h1>
+          {player.nickname && (
+            <p className="text-accent text-sm font-medium">"{player.nickname}"</p>
+          )}
+        </div>
+        <button onPointerDown={openEdit} className="p-2 touch-manipulation">
+          <Pencil size={20} className="text-text-secondary" />
+        </button>
       </div>
 
-      {/* Avatar */}
-      <div className="flex flex-col items-center py-6 shrink-0">
-        <PlayerAvatar name={player.name} size="xl" />
-        <p className="text-text-secondary text-sm mt-2">
+      {/* Avatar + bio */}
+      <div className="flex flex-col items-center py-4 shrink-0">
+        <div className="relative">
+          <PlayerAvatar name={player.name} avatarUrl={player.avatarUrl} size="xl" />
+        </div>
+        {player.bio && (
+          <p className="text-text-secondary text-sm mt-2 px-8 text-center italic">"{player.bio}"</p>
+        )}
+        <p className="text-text-secondary text-xs mt-1">
           Lid sinds {new Date(player.createdAt).toLocaleDateString('nl-NL')}
         </p>
       </div>
@@ -280,6 +349,119 @@ export function PlayerDetailScreen() {
           {cricketAvgFinish > 0 && <StatRow label="Gem. eindpijlen" value={cricketAvgFinish.toFixed(1)} />}
         </Section>
       </div>
+
+      {/* Edit sheet */}
+      <AnimatePresence>
+        {showEdit && (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-end justify-center"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <div className="absolute inset-0 bg-black/60" onClick={() => setShowEdit(false)} />
+            <motion.div
+              className="relative z-10 bg-surface rounded-t-3xl w-full max-w-lg flex flex-col"
+              style={{ maxHeight: '90vh' }}
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 25 }}
+            >
+              {/* Sheet header */}
+              <div className="flex items-center justify-between px-6 pt-6 pb-4 shrink-0">
+                <h2 className="text-xl font-bold text-text-primary">Profiel bewerken</h2>
+                <button onPointerDown={() => setShowEdit(false)}>
+                  <X size={24} className="text-text-secondary" />
+                </button>
+              </div>
+
+              {/* Sheet body */}
+              <div className="flex-1 overflow-y-auto px-6 pb-4 space-y-5">
+                {/* Avatar picker */}
+                <div className="flex flex-col items-center gap-3">
+                  <div className="relative">
+                    <PlayerAvatar
+                      name={editName || player.name}
+                      avatarUrl={editAvatarUrl}
+                      size="xl"
+                    />
+                    <button
+                      onPointerDown={() => fileInputRef.current?.click()}
+                      className="absolute -bottom-1 -right-1 bg-accent rounded-full p-1.5 touch-manipulation"
+                    >
+                      <Camera size={14} className="text-black" />
+                    </button>
+                  </div>
+                  {editAvatarUrl && (
+                    <button
+                      onPointerDown={() => setEditAvatarUrl(undefined)}
+                      className="text-xs text-text-secondary underline touch-manipulation"
+                    >
+                      Foto verwijderen
+                    </button>
+                  )}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handlePhotoSelect}
+                  />
+                </div>
+
+                {/* Name */}
+                <div>
+                  <label className="text-text-secondary text-xs uppercase tracking-wider font-semibold block mb-1.5">Naam</label>
+                  <input
+                    type="text"
+                    value={editName}
+                    onChange={e => setEditName(e.target.value)}
+                    className="w-full bg-surface2 text-text-primary rounded-xl px-4 py-3 text-base outline-none border border-transparent focus:border-accent"
+                  />
+                </div>
+
+                {/* Nickname */}
+                <div>
+                  <label className="text-text-secondary text-xs uppercase tracking-wider font-semibold block mb-1.5">Artiestennaam / Bijnaam</label>
+                  <input
+                    type="text"
+                    value={editNickname}
+                    onChange={e => setEditNickname(e.target.value)}
+                    placeholder="bijv. The Power, Barneveld"
+                    className="w-full bg-surface2 text-text-primary rounded-xl px-4 py-3 text-base outline-none border border-transparent focus:border-accent placeholder:text-text-secondary/50"
+                  />
+                </div>
+
+                {/* Bio */}
+                <div>
+                  <label className="text-text-secondary text-xs uppercase tracking-wider font-semibold block mb-1.5">Korte bio</label>
+                  <textarea
+                    value={editBio}
+                    onChange={e => setEditBio(e.target.value)}
+                    placeholder="Vertel iets over jezelf..."
+                    rows={3}
+                    className="w-full bg-surface2 text-text-primary rounded-xl px-4 py-3 text-base outline-none border border-transparent focus:border-accent resize-none placeholder:text-text-secondary/50"
+                  />
+                </div>
+              </div>
+
+              {/* Save button */}
+              <div className="px-6 pb-8 pt-2 shrink-0">
+                <Button
+                  variant="primary"
+                  size="lg"
+                  fullWidth
+                  onPointerDown={handleSave}
+                  disabled={!editName.trim() || saving}
+                >
+                  {saving ? 'Opslaan...' : 'Opslaan'}
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

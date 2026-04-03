@@ -168,8 +168,11 @@ export function HomeScreen() {
                   onPointerDown={() => navigate(`/speler/${p.id}`)}
                   className="flex flex-col items-center gap-1 touch-manipulation"
                 >
-                  <PlayerAvatar name={p.name} size="lg" />
-                  <span className="text-xs text-text-secondary max-w-[56px] truncate">{p.name}</span>
+                  <PlayerAvatar name={p.name} avatarUrl={p.avatarUrl} size="lg" />
+                  <span className="text-xs text-text-primary font-medium max-w-[64px] truncate">{p.name}</span>
+                  {p.nickname && (
+                    <span className="text-[10px] text-accent max-w-[64px] truncate">"{p.nickname}"</span>
+                  )}
                 </button>
               ))}
             </div>

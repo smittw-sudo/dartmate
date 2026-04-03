@@ -42,8 +42,6 @@ export async function upsertProfile(profile: PlayerProfile): Promise<void> {
     id: profile.id,
     user_id: user.id,
     name: profile.name,
-    nickname: profile.nickname ?? null,
-    bio: profile.bio ?? null,
     created_at: profile.createdAt,
     stats: profile.stats,
     preferred_doubles: profile.preferredDoubles,
@@ -60,8 +58,6 @@ function rowToProfile(row: Record<string, unknown>): PlayerProfile {
   return {
     id: row.id as string,
     name: row.name as string,
-    nickname: (row.nickname as string | null) ?? undefined,
-    bio: (row.bio as string | null) ?? undefined,
     createdAt: row.created_at as string,
     stats: (row.stats as PlayerProfile['stats']) ?? {},
     preferredDoubles: (row.preferred_doubles as Record<number, number>) ?? {},

@@ -6,20 +6,21 @@ import {
 } from '../lib/supabase';
 import { initPlayerProfile } from '../engine/statsEngine';
 
-// avatarUrl is stored in localStorage (base64 can be large; keep it off Supabase rows)
-type AvatarStore = Record<string, string>; // playerId -> dataURL
+// nickname, bio and avatarUrl are stored in localStorage so no Supabase schema changes are needed
+interface ProfileExtras { nickname?: string; bio?: string; avatarUrl?: string; }
+type ExtrasStore = Record<string, ProfileExtras>;
 
-function getAvatars(): AvatarStore {
-  try { return JSON.parse(localStorage.getItem('playerAvatars') ?? '{}'); } catch { return {}; }
+function getExtras(): ExtrasStore {
+  try { return JSON.parse(localStorage.getItem('profileExtras') ?? '{}'); } catch { return {}; }
 }
-function saveAvatar(id: string, url: string | undefined) {
-  const store = getAvatars();
-  if (url) store[id] = url; else delete store[id];
-  localStorage.setItem('playerAvatars', JSON.stringify(store));
+function saveExtras(id: string, extras: ProfileExtras) {
+  const store = getExtras();
+  store[id] = extras;
+  localStorage.setItem('profileExtras', JSON.stringify(store));
 }
-function mergeAvatars(profiles: PlayerProfile[]): PlayerProfile[] {
-  const store = getAvatars();
-  return profiles.map(p => store[p.id] ? { ...p, avatarUrl: store[p.id] } : p);
+function mergeExtras(profiles: PlayerProfile[]): PlayerProfile[] {
+  const store = getExtras();
+  return profiles.map(p => store[p.id] ? { ...p, ...store[p.id] } : p);
 }
 
 interface AppStore {
@@ -50,7 +51,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
       fetchProfiles().catch(() => [] as PlayerProfile[]),
       fetchPausedGames().catch(() => [] as ActiveGameState[]),
     ]);
-    set({ players: mergeAvatars(profiles), pausedGames, isLoading: false });
+    set({ players: mergeExtras(profiles), pausedGames, isLoading: false });
   },
 
   addPlayer: async (name: string) => {
@@ -61,8 +62,12 @@ export const useAppStore = create<AppStore>((set, get) => ({
   },
 
   updatePlayer: async (player: PlayerProfile) => {
-    // avatarUrl lives in localStorage; the rest goes to Supabase
-    saveAvatar(player.id, player.avatarUrl);
+    // nickname, bio, avatarUrl live in localStorage; stats/name go to Supabase
+    saveExtras(player.id, {
+      nickname: player.nickname,
+      bio: player.bio,
+      avatarUrl: player.avatarUrl,
+    });
     await upsertProfile(player);
     set(s => ({
       players: s.players.map(p => p.id === player.id ? player : p),

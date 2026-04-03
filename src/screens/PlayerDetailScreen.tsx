@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from '../store/appStore';
@@ -114,7 +114,6 @@ export function PlayerDetailScreen() {
   const [editBio, setEditBio] = useState('');
   const [editAvatarUrl, setEditAvatarUrl] = useState<string | undefined>(undefined);
   const [saving, setSaving] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const openEdit = () => {
     if (!player) return;
@@ -386,12 +385,15 @@ export function PlayerDetailScreen() {
                       avatarUrl={editAvatarUrl}
                       size="xl"
                     />
-                    <button
-                      onPointerDown={() => fileInputRef.current?.click()}
-                      className="absolute -bottom-1 -right-1 bg-accent rounded-full p-1.5 touch-manipulation"
-                    >
+                    <label className="absolute -bottom-1 -right-1 bg-accent rounded-full p-1.5 touch-manipulation cursor-pointer">
                       <Camera size={14} className="text-black" />
-                    </button>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handlePhotoSelect}
+                      />
+                    </label>
                   </div>
                   {editAvatarUrl && (
                     <button
@@ -401,13 +403,6 @@ export function PlayerDetailScreen() {
                       Foto verwijderen
                     </button>
                   )}
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={handlePhotoSelect}
-                  />
                 </div>
 
                 {/* Name */}

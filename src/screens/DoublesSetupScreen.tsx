@@ -31,7 +31,7 @@ export function DoublesSetupScreen() {
     const playerNames: Record<string, string> = {};
     for (const pid of selectedPlayerIds) {
       const p = players.find(x => x.id === pid);
-      if (p) playerNames[pid] = p.name;
+      if (p) playerNames[pid] = p.nickname || p.name;
     }
     startSession({
       playerIds: selectedPlayerIds,

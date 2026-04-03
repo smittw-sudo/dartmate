@@ -89,6 +89,10 @@ export function ActiveGameScreen() {
     game.gameType === 'x01_301' ? '301' : '101';
 
   const animationPlayer = players.find(p => p.id === animationData);
+  const displayName = (pid: string) => {
+    const p = players.find(x => x.id === pid);
+    return p?.nickname || p?.name || '?';
+  };
 
   return (
     <div className="h-screen bg-background flex flex-col overflow-hidden">
@@ -120,17 +124,17 @@ export function ActiveGameScreen() {
       {/* Animations */}
       <OneEightyAnimation
         visible={showAnimation === 'oneEighty'}
-        playerName={animationPlayer?.name ?? ''}
+        playerName={animationPlayer ? (animationPlayer.nickname || animationPlayer.name) : ''}
         onDone={clearAnimation}
       />
       <BrokenAnimation
         visible={showAnimation === 'broken'}
-        playerName={animationPlayer?.name ?? ''}
+        playerName={animationPlayer ? (animationPlayer.nickname || animationPlayer.name) : ''}
         onDone={clearAnimation}
       />
       <LegWonAnimation
         visible={showAnimation === 'legWon'}
-        playerName={animationPlayer?.name ?? ''}
+        playerName={animationPlayer ? (animationPlayer.nickname || animationPlayer.name) : ''}
         onDone={clearAnimation}
       />
 
@@ -172,8 +176,8 @@ export function ActiveGameScreen() {
               transition={{ duration: 0.2 }}
             >
               <div className="flex items-center gap-2">
-                <PlayerAvatar name={player?.name ?? '?'} size="sm" />
-                <span className="text-text-primary font-semibold text-sm truncate">{player?.name ?? '?'}</span>
+                <PlayerAvatar name={player?.name ?? '?'} avatarUrl={player?.avatarUrl} size="sm" />
+                <span className="text-text-primary font-semibold text-sm truncate">{displayName(pid)}</span>
                 {legsWon > 0 && (
                   <span className="ml-auto text-accent text-xs font-bold">{legsWon}L</span>
                 )}

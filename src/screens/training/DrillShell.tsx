@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Trophy } from 'lucide-react';
 import { DrillId, DRILL_BY_ID } from '../../data/trainingTypes';
 import { useTrainingStore } from '../../store/trainingStore';
+import { useAppStore } from '../../store/appStore';
 
 function HistoryBars({ scores, higherIsBetter }: { scores: number[]; higherIsBetter: boolean }) {
   if (scores.length === 0) return null;
@@ -38,6 +39,9 @@ export function DrillShell({ drillId, children }: DrillShellProps) {
   const historyRaw = useTrainingStore(s => s.history[drillId]);
   const history = historyRaw ?? [];
   const pr = useTrainingStore(s => s.personalRecords[drillId]);
+  const selectedPlayerId = useTrainingStore(s => s.selectedPlayerId);
+  const players = useAppStore(s => s.players);
+  const selectedPlayer = players.find(p => p.id === selectedPlayerId) ?? null;
 
   const scores = history.map(r => r.score);
 
@@ -50,7 +54,9 @@ export function DrillShell({ drillId, children }: DrillShellProps) {
         </button>
         <div className="flex-1">
           <h1 className="text-xl font-bold text-text-primary leading-tight">{def.title}</h1>
-          <p className="text-text-secondary text-xs">{def.subtitle}</p>
+          <p className="text-text-secondary text-xs">
+            {selectedPlayer ? `${selectedPlayer.nickname || selectedPlayer.name} · ` : ''}{def.subtitle}
+          </p>
         </div>
         {pr !== undefined && (
           <div className="flex items-center gap-1 bg-surface rounded-xl px-3 py-1.5">

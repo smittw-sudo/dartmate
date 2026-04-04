@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Trophy, ChevronRight, Target, Crosshair, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Trophy, ChevronRight, Target, Crosshair, CheckCircle, User } from 'lucide-react';
 import { DRILL_DEFINITIONS, DrillCategory, DrillDefinition, LEVEL_LABELS, detectLevel } from '../../data/trainingTypes';
 import { useTrainingStore } from '../../store/trainingStore';
 import { useAppStore } from '../../store/appStore';
 import { getAverageFromStats } from '../../engine/statsEngine';
+import { PlayerAvatar } from '../../components/ui/PlayerAvatar';
 
 const CATEGORY_LABELS: Record<DrillCategory, string> = {
   scoring: '🎯 Scoring',
@@ -79,11 +80,16 @@ export function TrainingScreen() {
   const navigate = useNavigate();
   const players = useAppStore(s => s.players);
   const allHistory = useTrainingStore(s => s.history);
+  const selectedPlayerId = useTrainingStore(s => s.selectedPlayerId);
+  const setSelectedPlayerId = useTrainingStore(s => s.setSelectedPlayerId);
   const [activeCategory, setActiveCategory] = useState<DrillCategory | 'all'>('all');
 
-  const avgAll = players.map(p => getAverageFromStats(p.stats));
-  const bestAvg = avgAll.length > 0 ? Math.max(...avgAll) : 0;
-  const level = detectLevel(bestAvg);
+  // Determine level from selected player, or best avg if none selected
+  const selectedPlayer = players.find(p => p.id === selectedPlayerId) ?? null;
+  const avgForLevel = selectedPlayer
+    ? getAverageFromStats(selectedPlayer.stats)
+    : (players.length > 0 ? Math.max(...players.map(p => getAverageFromStats(p.stats))) : 0);
+  const level = detectLevel(avgForLevel);
   const levelLabel = LEVEL_LABELS[level - 1];
 
   const drillsToShow = activeCategory === 'all'
@@ -109,6 +115,43 @@ export function TrainingScreen() {
           <span className="text-accent text-sm font-bold">Lvl {level} · {levelLabel}</span>
         </div>
       </div>
+
+      {/* Spelerkiezer */}
+      {players.length > 0 && (
+        <div className="px-4 pb-3 shrink-0">
+          <p className="text-text-secondary text-xs font-semibold uppercase tracking-wider mb-2 flex items-center gap-1">
+            <User size={11} />
+            Wie gaat trainen?
+          </p>
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {players.map(p => {
+              const isSelected = p.id === selectedPlayerId;
+              const avg = getAverageFromStats(p.stats);
+              const lvl = detectLevel(avg);
+              return (
+                <button
+                  key={p.id}
+                  onPointerDown={() => setSelectedPlayerId(isSelected ? null : p.id)}
+                  className={`flex flex-col items-center gap-1.5 px-3 py-2 rounded-2xl shrink-0 touch-manipulation transition-colors ${
+                    isSelected ? 'bg-accent/20 border-2 border-accent' : 'bg-surface border-2 border-transparent'
+                  }`}
+                >
+                  <PlayerAvatar name={p.name} avatarUrl={p.avatarUrl} size="sm" />
+                  <span className={`text-xs font-semibold whitespace-nowrap ${isSelected ? 'text-accent' : 'text-text-primary'}`}>
+                    {p.nickname || p.name}
+                  </span>
+                  <span className="text-[10px] text-text-secondary">Lvl {lvl}</span>
+                </button>
+              );
+            })}
+          </div>
+          {selectedPlayer && (
+            <p className="text-text-secondary text-xs mt-1.5">
+              Niveau aangepast op {selectedPlayer.nickname || selectedPlayer.name} · gem. {avgForLevel.toFixed(1)}
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Pijler-voortgang */}
       <div className="px-4 pb-3 shrink-0">

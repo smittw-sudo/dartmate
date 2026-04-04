@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, ChevronRight, Clock } from 'lucide-react';
 import { DRILL_DEFINITIONS, DrillId, detectLevel, LEVEL_LABELS } from '../../data/trainingTypes';
 import { useAppStore } from '../../store/appStore';
+import { useTrainingStore } from '../../store/trainingStore';
 import { getAverageFromStats } from '../../engine/statsEngine';
 
 interface SessionDrill { id: DrillId; duration: number; note: string; }
@@ -23,10 +24,13 @@ function buildDailySession(level: number): SessionDrill[] {
 export function DailyTrainingScreen() {
   const navigate = useNavigate();
   const players = useAppStore(s => s.players);
+  const selectedPlayerId = useTrainingStore(s => s.selectedPlayerId);
 
-  const avgAll = players.map(p => getAverageFromStats(p.stats));
-  const bestAvg = avgAll.length > 0 ? Math.max(...avgAll) : 0;
-  const level = detectLevel(bestAvg);
+  const selectedPlayer = players.find(p => p.id === selectedPlayerId) ?? null;
+  const avgForLevel = selectedPlayer
+    ? getAverageFromStats(selectedPlayer.stats)
+    : (players.length > 0 ? Math.max(...players.map(p => getAverageFromStats(p.stats))) : 0);
+  const level = detectLevel(avgForLevel);
   const session = buildDailySession(level);
   const totalMin = session.reduce((a, s) => a + s.duration, 0);
 
@@ -38,7 +42,9 @@ export function DailyTrainingScreen() {
         </button>
         <div className="flex-1">
           <h1 className="text-xl font-bold text-text-primary">Dagelijkse Training</h1>
-          <p className="text-text-secondary text-xs">Niveau {level} · {LEVEL_LABELS[level - 1]} · ~{totalMin} minuten</p>
+          <p className="text-text-secondary text-xs">
+            {selectedPlayer ? `${selectedPlayer.nickname || selectedPlayer.name} · ` : ''}Niveau {level} · {LEVEL_LABELS[level - 1]} · ~{totalMin} minuten
+          </p>
         </div>
         <div className="flex items-center gap-1 bg-surface rounded-xl px-2 py-1">
           <Clock size={14} className="text-accent" />

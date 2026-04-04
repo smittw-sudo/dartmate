@@ -24,12 +24,17 @@ function persist(state: TrainingState) {
 }
 
 interface TrainingStore extends TrainingState {
+  selectedPlayerId: string | null;
+  setSelectedPlayerId: (id: string | null) => void;
   saveResult: (drillId: DrillId, score: number, higherIsBetter: boolean, metadata?: Record<string, number>) => void;
   addBadge: (badge: string) => void;
 }
 
 export const useTrainingStore = create<TrainingStore>((set, get) => ({
   ...load(),
+  selectedPlayerId: null,
+
+  setSelectedPlayerId: (id) => set({ selectedPlayerId: id }),
 
   saveResult: (drillId, score, higherIsBetter, metadata) => {
     const state = get();

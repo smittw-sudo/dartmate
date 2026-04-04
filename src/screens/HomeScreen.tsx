@@ -5,7 +5,7 @@ import { useAppStore } from '../store/appStore';
 import { useGameStore } from '../store/gameStore';
 import { PlayerAvatar } from '../components/ui/PlayerAvatar';
 import { Button } from '../components/ui/Button';
-import { Play, Users, History, Target, Clock, LogOut, Swords, Trash2, Crosshair } from 'lucide-react';
+import { Play, Users, History, Target, Clock, LogOut, Swords, Trash2, Dumbbell } from 'lucide-react';
 import { signOut } from '../lib/supabase';
 
 export function HomeScreen() {
@@ -89,20 +89,14 @@ export function HomeScreen() {
           >
             <Swords size={20} className="mr-2" /> Onderlinge Stand
           </Button>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.18 }}
-        >
           <Button
             variant="secondary"
             size="lg"
             fullWidth
-            onPointerDown={() => navigate('/dubbels')}
+            onPointerDown={() => navigate('/training')}
+            className="col-span-2"
           >
-            <Crosshair size={20} className="mr-2" /> Dubbels Oefenen
+            <Dumbbell size={20} className="mr-2" /> Training
           </Button>
         </motion.div>
 

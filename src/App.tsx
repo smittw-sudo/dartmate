@@ -14,6 +14,9 @@ import { CompetitionScreen } from './screens/CompetitionScreen';
 import { DoublesSetupScreen } from './screens/DoublesSetupScreen';
 import { DoublesGameScreen } from './screens/DoublesGameScreen';
 import { DoublesEndScreen } from './screens/DoublesEndScreen';
+import { TrainingScreen } from './screens/training/TrainingScreen';
+import { DailyTrainingScreen } from './screens/training/DailyTrainingScreen';
+import { DrillRouter } from './screens/training/DrillRouter';
 import { Target } from 'lucide-react';
 
 export default function App() {
@@ -65,6 +68,9 @@ export default function App() {
         <Route path="/dubbels" element={<DoublesSetupScreen />} />
         <Route path="/dubbels/spel" element={<DoublesGameScreen />} />
         <Route path="/dubbels/einde" element={<DoublesEndScreen />} />
+        <Route path="/training" element={<TrainingScreen />} />
+        <Route path="/training/dagelijks" element={<DailyTrainingScreen />} />
+        <Route path="/training/drill/:drillId" element={<DrillRouter />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>

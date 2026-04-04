@@ -48,7 +48,7 @@ export function DoublesSetupScreen() {
     <div className="h-screen bg-background flex flex-col">
       {/* Header */}
       <div className="flex items-center gap-3 px-6 pt-8 pb-4">
-        <button onPointerDown={() => navigate('/')} className="p-2 touch-manipulation">
+        <button onPointerDown={() => navigate('/training')} className="p-2 touch-manipulation">
           <ArrowLeft size={24} className="text-text-primary" />
         </button>
         <div className="flex items-center gap-2 flex-1">

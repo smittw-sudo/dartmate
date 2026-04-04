@@ -1,0 +1,176 @@
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { ArrowLeft, Trophy, ChevronRight, Target, Crosshair, CheckCircle } from 'lucide-react';
+import { DRILL_DEFINITIONS, DrillCategory, DrillDefinition, DRILL_BY_ID, DrillId, detectLevel, LEVEL_LABELS } from '../../data/trainingTypes';
+import { useTrainingStore } from '../../store/trainingStore';
+import { useAppStore } from '../../store/appStore';
+import { getAverageFromStats } from '../../engine/statsEngine';
+
+const CATEGORY_LABELS: Record<DrillCategory, string> = {
+  scoring: '🎯 Scoring',
+  doubles: '🎳 Dubbels',
+  checkouts: '✅ Checkouts',
+};
+
+const CATEGORY_ORDER: DrillCategory[] = ['scoring', 'doubles', 'checkouts'];
+
+function DrillCard({ def, onPress }: { def: DrillDefinition; onPress: () => void }) {
+  const pr = useTrainingStore(s => s.getPR(def.id));
+  const history = useTrainingStore(s => s.getHistory(def.id));
+  const last = history[0];
+
+  return (
+    <button
+      onPointerDown={onPress}
+      className="w-full bg-surface rounded-2xl p-4 flex items-center gap-3 active:bg-surface2 touch-manipulation text-left"
+    >
+      <div className="flex-1">
+        <div className="flex items-center gap-2">
+          <p className="text-text-primary font-semibold">{def.title}</p>
+          {history.length > 0 && <span className="text-[10px] bg-accent/20 text-accent px-1.5 py-0.5 rounded-full font-bold">{history.length}×</span>}
+        </div>
+        <p className="text-text-secondary text-xs mt-0.5">{def.subtitle}</p>
+        {last && (
+          <p className="text-accent text-xs mt-1 font-semibold">
+            Laatste: {last.score}{def.scoringLabel.includes('%') ? '%' : ''} · {def.scoringLabel}
+          </p>
+        )}
+      </div>
+      <div className="flex flex-col items-end gap-1 shrink-0">
+        {pr !== undefined && (
+          <div className="flex items-center gap-1">
+            <Trophy size={11} className="text-accent" />
+            <span className="text-accent text-xs font-bold">{pr}</span>
+          </div>
+        )}
+        <ChevronRight size={18} className="text-text-secondary" />
+      </div>
+    </button>
+  );
+}
+
+function PillarProgress({ category }: { category: DrillCategory }) {
+  const drills = DRILL_DEFINITIONS.filter(d => d.category === category);
+  const played = drills.filter(d => {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    const h = useTrainingStore.getState().getHistory(d.id);
+    return h.length > 0;
+  }).length;
+
+  return (
+    <div className="flex-1">
+      <div className="flex justify-between mb-1">
+        <span className="text-text-secondary text-xs">{CATEGORY_LABELS[category]}</span>
+        <span className="text-text-secondary text-xs">{played}/{drills.length}</span>
+      </div>
+      <div className="h-1.5 bg-surface2 rounded-full overflow-hidden">
+        <div className="h-full bg-accent rounded-full" style={{ width: `${(played / drills.length) * 100}%` }} />
+      </div>
+    </div>
+  );
+}
+
+export function TrainingScreen() {
+  const navigate = useNavigate();
+  const players = useAppStore(s => s.players);
+  const [activeCategory, setActiveCategory] = useState<DrillCategory | 'all'>('all');
+
+  // Detect level from first player's stats (or best player)
+  const avgAll = players.map(p => getAverageFromStats(p.stats));
+  const bestAvg = avgAll.length > 0 ? Math.max(...avgAll) : 0;
+  const level = detectLevel(bestAvg);
+  const levelLabel = LEVEL_LABELS[level - 1];
+
+  const drillsToShow = activeCategory === 'all'
+    ? DRILL_DEFINITIONS
+    : DRILL_DEFINITIONS.filter(d => d.category === activeCategory);
+
+  const grouped = CATEGORY_ORDER.reduce((acc, cat) => {
+    acc[cat] = drillsToShow.filter(d => d.category === cat);
+    return acc;
+  }, {} as Record<DrillCategory, DrillDefinition[]>);
+
+  return (
+    <div className="h-screen bg-background flex flex-col overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center gap-3 px-4 pt-8 pb-3 shrink-0">
+        <button onPointerDown={() => navigate('/')} className="p-2 touch-manipulation">
+          <ArrowLeft size={24} className="text-text-primary" />
+        </button>
+        <div className="flex-1">
+          <h1 className="text-2xl font-bold text-text-primary">Training</h1>
+        </div>
+        <div className="bg-surface rounded-xl px-3 py-1.5 flex items-center gap-1.5">
+          <Target size={14} className="text-accent" />
+          <span className="text-accent text-sm font-bold">Lvl {level} · {levelLabel}</span>
+        </div>
+      </div>
+
+      {/* Pijler-voortgang */}
+      <div className="px-4 pb-3 shrink-0">
+        <div className="bg-surface rounded-2xl p-3 flex gap-3">
+          {CATEGORY_ORDER.map(cat => <PillarProgress key={cat} category={cat} />)}
+        </div>
+      </div>
+
+      {/* Snelkoppelingen */}
+      <div className="px-4 pb-3 shrink-0 grid grid-cols-2 gap-2">
+        <button
+          onPointerDown={() => navigate('/training/dagelijks')}
+          className="bg-accent rounded-2xl p-3 flex items-center gap-2 active:scale-95 transition-transform touch-manipulation"
+        >
+          <CheckCircle size={20} className="text-black" />
+          <span className="text-black font-bold text-sm">Dagelijkse Training</span>
+        </button>
+        <button
+          onPointerDown={() => navigate('/dubbels')}
+          className="bg-surface rounded-2xl p-3 flex items-center gap-2 active:scale-95 transition-transform touch-manipulation"
+        >
+          <Crosshair size={20} className="text-accent" />
+          <span className="text-text-primary font-bold text-sm">Dubbels Oefenen</span>
+        </button>
+      </div>
+
+      {/* Categorie-filter */}
+      <div className="px-4 pb-3 shrink-0 flex gap-2 overflow-x-auto">
+        {(['all', ...CATEGORY_ORDER] as const).map(cat => (
+          <button
+            key={cat}
+            onPointerDown={() => setActiveCategory(cat)}
+            className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap touch-manipulation transition-colors ${
+              activeCategory === cat ? 'bg-accent text-black' : 'bg-surface text-text-secondary'
+            }`}
+          >
+            {cat === 'all' ? 'Alles' : CATEGORY_LABELS[cat]}
+          </button>
+        ))}
+      </div>
+
+      {/* Drill lijst */}
+      <div className="flex-1 overflow-y-auto px-4 pb-6">
+        {CATEGORY_ORDER.map(cat => {
+          const drills = grouped[cat];
+          if (!drills || drills.length === 0) return null;
+          return (
+            <div key={cat} className="mb-5">
+              <h2 className="text-text-secondary text-xs font-bold uppercase tracking-wider mb-2">{CATEGORY_LABELS[cat]}</h2>
+              <div className="space-y-2">
+                {drills.map((def, i) => (
+                  <motion.div
+                    key={def.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.04 }}
+                  >
+                    <DrillCard def={def} onPress={() => navigate(`/training/drill/${def.id}`)} />
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}

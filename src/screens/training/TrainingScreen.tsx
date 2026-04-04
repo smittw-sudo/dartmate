@@ -17,7 +17,8 @@ const CATEGORY_ORDER: DrillCategory[] = ['scoring', 'doubles', 'checkouts'];
 
 function DrillCard({ def, onPress }: { def: DrillDefinition; onPress: () => void }) {
   const pr = useTrainingStore(s => s.personalRecords[def.id]);
-  const history = useTrainingStore(s => s.history[def.id] ?? []);
+  const historyRaw = useTrainingStore(s => s.history[def.id]);
+  const history = historyRaw ?? [];
   const last = history[0];
 
   return (

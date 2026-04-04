@@ -35,7 +35,8 @@ interface DrillShellProps {
 export function DrillShell({ drillId, children }: DrillShellProps) {
   const def = DRILL_BY_ID[drillId];
   const navigate = useNavigate();
-  const history = useTrainingStore(s => s.history[drillId] ?? []);
+  const historyRaw = useTrainingStore(s => s.history[drillId]);
+  const history = historyRaw ?? [];
   const pr = useTrainingStore(s => s.personalRecords[drillId]);
 
   const scores = history.map(r => r.score);

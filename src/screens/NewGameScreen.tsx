@@ -73,7 +73,7 @@ export function NewGameScreen() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="h-screen bg-background flex flex-col">
       {/* Header */}
       <div className="flex items-center gap-3 px-6 pt-8 pb-4">
         <button onPointerDown={() => step === 'type' ? navigate('/') : setStep(
@@ -195,8 +195,8 @@ export function NewGameScreen() {
                       onPointerDown={() => togglePlayer(p.id)}
                       className={`w-full bg-surface rounded-2xl p-4 flex items-center gap-4 touch-manipulation ${selected ? 'border-2 border-accent' : 'border-2 border-transparent'}`}
                     >
-                      <PlayerAvatar name={p.name} size="md" />
-                      <span className="flex-1 text-left text-text-primary font-semibold">{p.name}</span>
+                      <PlayerAvatar name={p.name} avatarUrl={p.avatarUrl} size="md" />
+                      <span className="flex-1 text-left text-text-primary font-semibold">{p.nickname || p.name}</span>
                       {selected && <Check size={20} className="text-accent" />}
                     </button>
                   );

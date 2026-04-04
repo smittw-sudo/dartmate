@@ -32,8 +32,8 @@ function H2HCard({ record, players, hideSuffix = false }: { record: H2HRecord; p
         {/* Players + score */}
         <div className="flex items-center gap-3 mb-3">
           <div className="flex flex-col items-center gap-1 min-w-[52px]">
-            <PlayerAvatar name={p1.name} size="md" />
-            <span className="text-xs text-text-primary font-semibold truncate max-w-[52px]">{p1.name}</span>
+            <PlayerAvatar name={p1.name} avatarUrl={p1.avatarUrl} size="md" />
+            <span className="text-xs text-text-primary font-semibold truncate max-w-[52px]">{p1.nickname || p1.name}</span>
           </div>
 
           <div className="flex-1 text-center">
@@ -50,8 +50,8 @@ function H2HCard({ record, players, hideSuffix = false }: { record: H2HRecord; p
           </div>
 
           <div className="flex flex-col items-center gap-1 min-w-[52px]">
-            <PlayerAvatar name={p2.name} size="md" />
-            <span className="text-xs text-text-primary font-semibold truncate max-w-[52px]">{p2.name}</span>
+            <PlayerAvatar name={p2.name} avatarUrl={p2.avatarUrl} size="md" />
+            <span className="text-xs text-text-primary font-semibold truncate max-w-[52px]">{p2.nickname || p2.name}</span>
           </div>
 
           <div className="ml-1 shrink-0">

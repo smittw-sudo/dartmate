@@ -72,7 +72,7 @@ export function DoublesSetupScreen() {
                     isSelected ? 'border-accent' : 'border-transparent'
                   }`}
                 >
-                  <PlayerAvatar name={p.name} size="md" />
+                  <PlayerAvatar name={p.name} avatarUrl={p.avatarUrl} size="md" />
                   <span className="text-text-primary font-semibold flex-1 text-left">{p.name}</span>
                   {isSelected && <Check size={18} className="text-accent shrink-0" />}
                 </button>

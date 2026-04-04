@@ -21,7 +21,7 @@ export function PlayersScreen() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="h-screen bg-background flex flex-col">
       {/* Header */}
       <div className="flex items-center gap-3 px-6 pt-8 pb-4">
         <button onPointerDown={() => navigate('/')} className="p-2 touch-manipulation">

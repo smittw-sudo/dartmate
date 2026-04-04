@@ -77,8 +77,8 @@ export function EndGameScreen() {
 
         {winner && (
           <div className="flex flex-col items-center gap-2">
-            <PlayerAvatar name={winner.name} size="xl" />
-            <h1 className="text-4xl font-black text-text-primary">{winner.name}</h1>
+            <PlayerAvatar name={winner.name} avatarUrl={winner.avatarUrl} size="xl" />
+            <h1 className="text-4xl font-black text-text-primary">{winner.nickname || winner.name}</h1>
             <p className="text-text-secondary text-lg">wint het potje!</p>
           </div>
         )}
@@ -90,8 +90,8 @@ export function EndGameScreen() {
             const legsWon = snapshot.legsWon[pid] ?? 0;
             return (
               <div key={pid} className="flex items-center gap-3">
-                <PlayerAvatar name={p?.name ?? '?'} size="sm" />
-                <span className="flex-1 text-text-primary font-semibold">{p?.name}</span>
+                <PlayerAvatar name={p?.name ?? '?'} avatarUrl={p?.avatarUrl} size="sm" />
+                <span className="flex-1 text-text-primary font-semibold">{p?.nickname || p?.name}</span>
                 <span className={`font-bold text-lg ${pid === snapshot.winnerId ? 'text-accent' : 'text-text-secondary'}`}>
                   {legsWon} {legsWon === 1 ? 'leg' : 'legs'}
                 </span>

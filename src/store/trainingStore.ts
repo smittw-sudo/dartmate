@@ -8,17 +8,23 @@ function load(): TrainingState {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) return JSON.parse(raw) as TrainingState;
   } catch {}
-  return { history: {} as Record<DrillId, DrillResult[]>, personalRecords: {} as Record<DrillId, number>, badges: [] };
+  return {
+    history: {} as Record<DrillId, DrillResult[]>,
+    personalRecords: {} as Record<DrillId, number>,
+    badges: [],
+  };
 }
 
-function save(state: TrainingState) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+function persist(state: TrainingState) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({
+    history: state.history,
+    personalRecords: state.personalRecords,
+    badges: state.badges,
+  }));
 }
 
 interface TrainingStore extends TrainingState {
   saveResult: (drillId: DrillId, score: number, higherIsBetter: boolean, metadata?: Record<string, number>) => void;
-  getHistory: (drillId: DrillId) => DrillResult[];
-  getPR: (drillId: DrillId) => number | undefined;
   addBadge: (badge: string) => void;
 }
 
@@ -34,27 +40,22 @@ export const useTrainingStore = create<TrainingStore>((set, get) => ({
     const currentPR = state.personalRecords[drillId];
     const newPR = currentPR === undefined
       ? score
-      : higherIsBetter
-        ? Math.max(currentPR, score)
-        : Math.min(currentPR, score);
+      : higherIsBetter ? Math.max(currentPR, score) : Math.min(currentPR, score);
 
-    const next: TrainingState = {
+    const next = {
       history: { ...state.history, [drillId]: updated },
       personalRecords: { ...state.personalRecords, [drillId]: newPR },
       badges: state.badges,
     };
-    save(next);
+    persist(next);
     set(next);
   },
-
-  getHistory: (drillId) => get().history[drillId] ?? [],
-  getPR: (drillId) => get().personalRecords[drillId],
 
   addBadge: (badge) => {
     const state = get();
     if (state.badges.includes(badge)) return;
     const next = { ...state, badges: [...state.badges, badge] };
-    save(next);
+    persist(next);
     set(next);
   },
 }));

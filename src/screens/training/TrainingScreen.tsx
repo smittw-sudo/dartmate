@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Trophy, ChevronRight, Target, Crosshair, CheckCircle } from 'lucide-react';
-import { DRILL_DEFINITIONS, DrillCategory, DrillDefinition, DRILL_BY_ID, DrillId, detectLevel, LEVEL_LABELS } from '../../data/trainingTypes';
+import { DRILL_DEFINITIONS, DrillCategory, DrillDefinition, LEVEL_LABELS, detectLevel } from '../../data/trainingTypes';
 import { useTrainingStore } from '../../store/trainingStore';
 import { useAppStore } from '../../store/appStore';
 import { getAverageFromStats } from '../../engine/statsEngine';
@@ -16,8 +16,8 @@ const CATEGORY_LABELS: Record<DrillCategory, string> = {
 const CATEGORY_ORDER: DrillCategory[] = ['scoring', 'doubles', 'checkouts'];
 
 function DrillCard({ def, onPress }: { def: DrillDefinition; onPress: () => void }) {
-  const pr = useTrainingStore(s => s.getPR(def.id));
-  const history = useTrainingStore(s => s.getHistory(def.id));
+  const pr = useTrainingStore(s => s.personalRecords[def.id]);
+  const history = useTrainingStore(s => s.history[def.id] ?? []);
   const last = history[0];
 
   return (
@@ -28,12 +28,16 @@ function DrillCard({ def, onPress }: { def: DrillDefinition; onPress: () => void
       <div className="flex-1">
         <div className="flex items-center gap-2">
           <p className="text-text-primary font-semibold">{def.title}</p>
-          {history.length > 0 && <span className="text-[10px] bg-accent/20 text-accent px-1.5 py-0.5 rounded-full font-bold">{history.length}×</span>}
+          {history.length > 0 && (
+            <span className="text-[10px] bg-accent/20 text-accent px-1.5 py-0.5 rounded-full font-bold">
+              {history.length}×
+            </span>
+          )}
         </div>
         <p className="text-text-secondary text-xs mt-0.5">{def.subtitle}</p>
         {last && (
           <p className="text-accent text-xs mt-1 font-semibold">
-            Laatste: {last.score}{def.scoringLabel.includes('%') ? '%' : ''} · {def.scoringLabel}
+            Laatste: {last.score} · {def.scoringLabel}
           </p>
         )}
       </div>
@@ -50,13 +54,9 @@ function DrillCard({ def, onPress }: { def: DrillDefinition; onPress: () => void
   );
 }
 
-function PillarProgress({ category }: { category: DrillCategory }) {
+function PillarProgress({ category, allHistory }: { category: DrillCategory; allHistory: Record<string, unknown[]> }) {
   const drills = DRILL_DEFINITIONS.filter(d => d.category === category);
-  const played = drills.filter(d => {
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    const h = useTrainingStore.getState().getHistory(d.id);
-    return h.length > 0;
-  }).length;
+  const played = drills.filter(d => (allHistory[d.id]?.length ?? 0) > 0).length;
 
   return (
     <div className="flex-1">
@@ -65,7 +65,10 @@ function PillarProgress({ category }: { category: DrillCategory }) {
         <span className="text-text-secondary text-xs">{played}/{drills.length}</span>
       </div>
       <div className="h-1.5 bg-surface2 rounded-full overflow-hidden">
-        <div className="h-full bg-accent rounded-full" style={{ width: `${(played / drills.length) * 100}%` }} />
+        <div
+          className="h-full bg-accent rounded-full transition-all"
+          style={{ width: `${(played / drills.length) * 100}%` }}
+        />
       </div>
     </div>
   );
@@ -74,9 +77,9 @@ function PillarProgress({ category }: { category: DrillCategory }) {
 export function TrainingScreen() {
   const navigate = useNavigate();
   const players = useAppStore(s => s.players);
+  const allHistory = useTrainingStore(s => s.history);
   const [activeCategory, setActiveCategory] = useState<DrillCategory | 'all'>('all');
 
-  // Detect level from first player's stats (or best player)
   const avgAll = players.map(p => getAverageFromStats(p.stats));
   const bestAvg = avgAll.length > 0 ? Math.max(...avgAll) : 0;
   const level = detectLevel(bestAvg);
@@ -86,10 +89,11 @@ export function TrainingScreen() {
     ? DRILL_DEFINITIONS
     : DRILL_DEFINITIONS.filter(d => d.category === activeCategory);
 
-  const grouped = CATEGORY_ORDER.reduce((acc, cat) => {
-    acc[cat] = drillsToShow.filter(d => d.category === cat);
-    return acc;
-  }, {} as Record<DrillCategory, DrillDefinition[]>);
+  const grouped: Record<DrillCategory, DrillDefinition[]> = {
+    scoring: drillsToShow.filter(d => d.category === 'scoring'),
+    doubles: drillsToShow.filter(d => d.category === 'doubles'),
+    checkouts: drillsToShow.filter(d => d.category === 'checkouts'),
+  };
 
   return (
     <div className="h-screen bg-background flex flex-col overflow-hidden">
@@ -98,9 +102,7 @@ export function TrainingScreen() {
         <button onPointerDown={() => navigate('/')} className="p-2 touch-manipulation">
           <ArrowLeft size={24} className="text-text-primary" />
         </button>
-        <div className="flex-1">
-          <h1 className="text-2xl font-bold text-text-primary">Training</h1>
-        </div>
+        <h1 className="text-2xl font-bold text-text-primary flex-1">Training</h1>
         <div className="bg-surface rounded-xl px-3 py-1.5 flex items-center gap-1.5">
           <Target size={14} className="text-accent" />
           <span className="text-accent text-sm font-bold">Lvl {level} · {levelLabel}</span>
@@ -110,7 +112,9 @@ export function TrainingScreen() {
       {/* Pijler-voortgang */}
       <div className="px-4 pb-3 shrink-0">
         <div className="bg-surface rounded-2xl p-3 flex gap-3">
-          {CATEGORY_ORDER.map(cat => <PillarProgress key={cat} category={cat} />)}
+          {CATEGORY_ORDER.map(cat => (
+            <PillarProgress key={cat} category={cat} allHistory={allHistory as Record<string, unknown[]>} />
+          ))}
         </div>
       </div>
 
@@ -154,7 +158,9 @@ export function TrainingScreen() {
           if (!drills || drills.length === 0) return null;
           return (
             <div key={cat} className="mb-5">
-              <h2 className="text-text-secondary text-xs font-bold uppercase tracking-wider mb-2">{CATEGORY_LABELS[cat]}</h2>
+              <h2 className="text-text-secondary text-xs font-bold uppercase tracking-wider mb-2">
+                {CATEGORY_LABELS[cat]}
+              </h2>
               <div className="space-y-2">
                 {drills.map((def, i) => (
                   <motion.div

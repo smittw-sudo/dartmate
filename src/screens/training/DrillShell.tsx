@@ -1,27 +1,19 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Trophy } from 'lucide-react';
-import { DrillId, DrillDefinition, DRILL_BY_ID } from '../../data/trainingTypes';
+import { DrillId, DRILL_BY_ID } from '../../data/trainingTypes';
 import { useTrainingStore } from '../../store/trainingStore';
 
-interface HistoryBarProps {
-  results: { score: number }[];
-  higherIsBetter: boolean;
-}
-
-function HistoryBars({ results, higherIsBetter }: HistoryBarProps) {
-  if (results.length === 0) return null;
-  const last10 = results.slice(0, 10).reverse();
-  const vals = last10.map(r => r.score);
-  const min = Math.min(...vals);
-  const max = Math.max(...vals);
+function HistoryBars({ scores, higherIsBetter }: { scores: number[]; higherIsBetter: boolean }) {
+  if (scores.length === 0) return null;
+  const last10 = scores.slice(0, 10).reverse();
+  const min = Math.min(...last10);
+  const max = Math.max(...last10);
   const range = max - min || 1;
   return (
     <div className="flex items-end gap-1 h-8">
-      {last10.map((r, i) => {
-        const pct = higherIsBetter
-          ? ((r.score - min) / range) * 100
-          : ((max - r.score) / range) * 100;
+      {last10.map((v, i) => {
+        const pct = higherIsBetter ? ((v - min) / range) * 100 : ((max - v) / range) * 100;
         const isLast = i === last10.length - 1;
         return (
           <div
@@ -43,8 +35,10 @@ interface DrillShellProps {
 export function DrillShell({ drillId, children }: DrillShellProps) {
   const def = DRILL_BY_ID[drillId];
   const navigate = useNavigate();
-  const history = useTrainingStore(s => s.getHistory(drillId));
-  const pr = useTrainingStore(s => s.getPR(drillId));
+  const history = useTrainingStore(s => s.history[drillId] ?? []);
+  const pr = useTrainingStore(s => s.personalRecords[drillId]);
+
+  const scores = history.map(r => r.score);
 
   return (
     <div className="h-screen bg-background flex flex-col overflow-hidden">
@@ -60,22 +54,20 @@ export function DrillShell({ drillId, children }: DrillShellProps) {
         {pr !== undefined && (
           <div className="flex items-center gap-1 bg-surface rounded-xl px-3 py-1.5">
             <Trophy size={14} className="text-accent" />
-            <span className="text-accent text-sm font-bold tabular">
-              {def.higherIsBetter ? '' : ''}{pr}{def.scoringLabel.includes('%') ? '%' : ''}
-            </span>
+            <span className="text-accent text-sm font-bold tabular">{pr}</span>
           </div>
         )}
       </div>
 
       {/* History bars */}
-      {history.length > 0 && (
+      {scores.length > 0 && (
         <div className="px-4 pb-2 shrink-0">
-          <HistoryBars results={history} higherIsBetter={def.higherIsBetter} />
-          <p className="text-text-secondary text-xs mt-1">Laatste {Math.min(history.length, 10)} sessies</p>
+          <HistoryBars scores={scores} higherIsBetter={def.higherIsBetter} />
+          <p className="text-text-secondary text-xs mt-1">Laatste {Math.min(scores.length, 10)} sessies</p>
         </div>
       )}
 
-      {/* Drill content */}
+      {/* Content */}
       <div className="flex-1 overflow-y-auto">
         {children}
       </div>

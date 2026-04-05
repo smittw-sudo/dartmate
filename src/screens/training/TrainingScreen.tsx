@@ -7,6 +7,7 @@ import { useTrainingStore } from '../../store/trainingStore';
 import { useAppStore } from '../../store/appStore';
 import { getRecentAverageFromStats } from '../../engine/statsEngine';
 import { PlayerAvatar } from '../../components/ui/PlayerAvatar';
+import { GUEST_PLAYER_ID } from '../../data/types';
 
 const CATEGORY_LABELS: Record<DrillCategory, string> = {
   scoring: '🎯 Scoring',
@@ -47,9 +48,9 @@ function PlayerPicker({
       {/* Spelerlijst */}
       <div className="flex-1 overflow-y-auto px-4 pb-6 space-y-3">
         {players.length === 0 && (
-          <div className="text-center text-text-secondary py-16">
+          <div className="text-center text-text-secondary py-8">
             <p className="text-lg">Nog geen spelers.</p>
-            <p className="text-sm mt-1">Maak eerst een speler aan via het hoofdmenu.</p>
+            <p className="text-sm mt-1">Maak een profiel aan via het hoofdmenu, of ga als gast trainen.</p>
           </div>
         )}
         {players.map((p, i) => {
@@ -88,6 +89,45 @@ function PlayerPicker({
             </motion.button>
           );
         })}
+
+        {/* Scheidslijn */}
+        {players.length > 0 && (
+          <div className="flex items-center gap-3 py-1">
+            <div className="flex-1 h-px bg-surface2" />
+            <span className="text-text-secondary text-xs">of</span>
+            <div className="flex-1 h-px bg-surface2" />
+          </div>
+        )}
+
+        {/* Gast-optie */}
+        <motion.button
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: players.length * 0.06 + 0.05 }}
+          onPointerDown={() => setPicked(GUEST_PLAYER_ID)}
+          className={`w-full rounded-2xl p-4 flex items-center gap-4 touch-manipulation border-2 transition-colors ${
+            picked === GUEST_PLAYER_ID
+              ? 'bg-accent/10 border-accent'
+              : 'bg-surface border-dashed border-surface2'
+          }`}
+        >
+          <div className="w-12 h-12 rounded-full bg-surface2 flex items-center justify-center text-2xl shrink-0">
+            👤
+          </div>
+          <div className="flex-1 text-left">
+            <p className={`font-bold text-lg ${picked === GUEST_PLAYER_ID ? 'text-accent' : 'text-text-primary'}`}>
+              Gast
+            </p>
+            <p className="text-text-secondary text-xs">
+              Trainen zonder profiel · resultaten worden na sessie gewist
+            </p>
+          </div>
+          {picked === GUEST_PLAYER_ID && (
+            <div className="w-7 h-7 rounded-full bg-accent flex items-center justify-center shrink-0">
+              <Check size={16} className="text-black" />
+            </div>
+          )}
+        </motion.button>
       </div>
 
       {/* Start-knop */}
@@ -195,9 +235,16 @@ function TrainingContent({ playerId }: { playerId: string }) {
   const navigate = useNavigate();
   const players = useAppStore(s => s.players);
   const setSelectedPlayerId = useTrainingStore(s => s.setSelectedPlayerId);
+  const clearGuestData = useTrainingStore(s => s.clearGuestData);
+
+  const handleBack = () => {
+    if (playerId === GUEST_PLAYER_ID) clearGuestData();
+    setSelectedPlayerId(null);
+  };
   const [activeCategory, setActiveCategory] = useState<DrillCategory | 'all'>('all');
 
-  const player = players.find(p => p.id === playerId);
+  const isGuest = playerId === GUEST_PLAYER_ID;
+  const player = isGuest ? null : players.find(p => p.id === playerId);
   const avg = player ? getRecentAverageFromStats(player.stats) : 0;
   const level = detectLevel(avg);
   const levelLabel = LEVEL_LABELS[level - 1];
@@ -216,18 +263,20 @@ function TrainingContent({ playerId }: { playerId: string }) {
     <div className="h-screen bg-background flex flex-col overflow-hidden">
       {/* Header */}
       <div className="flex items-center gap-3 px-4 pt-8 pb-3 shrink-0">
-        {/* Speler wisselen */}
+        {/* Speler wisselen / terug */}
         <button
-          onPointerDown={() => setSelectedPlayerId(null)}
+          onPointerDown={handleBack}
           className="p-2 touch-manipulation"
         >
           <ArrowLeft size={24} className="text-text-primary" />
         </button>
         <div className="flex-1">
           <h1 className="text-xl font-bold text-text-primary">
-            {player ? (player.nickname || player.name) : 'Training'}
+            {isGuest ? 'Gast' : (player ? (player.nickname || player.name) : 'Training')}
           </h1>
-          {avg > 0 && (
+          {isGuest ? (
+            <p className="text-text-secondary text-xs">Sessie wordt na afloop gewist</p>
+          ) : avg > 0 && (
             <p className="text-text-secondary text-xs">
               gem. {avg.toFixed(1)} (laatste {Math.min(player?.stats.recentGameAverages?.length ?? 0, 20)} potjes)
             </p>

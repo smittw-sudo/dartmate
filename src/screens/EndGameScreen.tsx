@@ -7,7 +7,7 @@ import { PlayerAvatar } from '../components/ui/PlayerAvatar';
 import { Button } from '../components/ui/Button';
 import { Trophy, RotateCcw, Home, Zap } from 'lucide-react';
 import { updateStatsAfterGame } from '../engine/statsEngine';
-import { ActiveGameState } from '../data/types';
+import { ActiveGameState, resolvePlayer } from '../data/types';
 
 export function EndGameScreen() {
   const navigate = useNavigate();
@@ -41,7 +41,7 @@ export function EndGameScreen() {
 
   if (!snapshot?.isGameOver) return null;
 
-  const winner = players.find(p => p.id === snapshot.winnerId);
+  const winner = snapshot.winnerId ? resolvePlayer(snapshot.winnerId, players) : undefined;
 
   const handleNewGame = () => {
     const reversed = [...snapshot.playerIds].reverse();
@@ -86,7 +86,7 @@ export function EndGameScreen() {
         {/* Score overview */}
         <div className="w-full bg-surface rounded-2xl p-4 space-y-2">
           {snapshot.playerIds.map(pid => {
-            const p = players.find(x => x.id === pid);
+            const p = resolvePlayer(pid, players);
             const legsWon = snapshot.legsWon[pid] ?? 0;
             return (
               <div key={pid} className="flex items-center gap-3">

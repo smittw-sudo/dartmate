@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { DrillId, DrillResult, TrainingState } from '../data/trainingTypes';
+import { GUEST_PLAYER_ID } from '../data/types';
 
 // v2: per-speler history/PRs
 const STORAGE_KEY = 'dartmate_training_v2';
@@ -7,7 +8,15 @@ const STORAGE_KEY = 'dartmate_training_v2';
 function load(): TrainingState {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw) as TrainingState;
+    if (raw) {
+      const data = JSON.parse(raw) as TrainingState;
+      // Gast-data wordt nooit bewaard tussen app-sessies
+      const history = { ...data.history };
+      const personalRecords = { ...data.personalRecords };
+      delete history[GUEST_PLAYER_ID];
+      delete personalRecords[GUEST_PLAYER_ID];
+      return { ...data, history, personalRecords };
+    }
   } catch {}
   return { history: {}, personalRecords: {}, badges: [] };
 }
@@ -31,6 +40,7 @@ export interface SaveResultReturn {
 interface TrainingStore extends TrainingState {
   selectedPlayerId: string | null;
   setSelectedPlayerId: (id: string | null) => void;
+  clearGuestData: () => void;
   saveResult: (
     drillId: DrillId,
     score: number,
@@ -46,6 +56,17 @@ export const useTrainingStore = create<TrainingStore>((set, get) => ({
   selectedPlayerId: null,
 
   setSelectedPlayerId: (id) => set({ selectedPlayerId: id }),
+
+  clearGuestData: () => {
+    const state = get();
+    const history = { ...state.history };
+    const personalRecords = { ...state.personalRecords };
+    delete history[GUEST_PLAYER_ID];
+    delete personalRecords[GUEST_PLAYER_ID];
+    const next = { history, personalRecords, badges: state.badges };
+    persist(next);
+    set(next);
+  },
 
   saveResult: (drillId, score, higherIsBetter, playerId, metadata) => {
     const state = get();

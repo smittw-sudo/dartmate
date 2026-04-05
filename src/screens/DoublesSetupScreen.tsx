@@ -6,6 +6,7 @@ import { useAppStore } from '../store/appStore';
 import { useDoublesStore } from '../store/doublesStore';
 import { PlayerAvatar } from '../components/ui/PlayerAvatar';
 import { Button } from '../components/ui/Button';
+import { GUEST_PLAYER_ID } from '../data/types';
 
 const COUNT_OPTIONS = [20, 15, 10, 5];
 
@@ -30,16 +31,18 @@ export function DoublesSetupScreen() {
     if (selectedPlayerIds.length === 0) return;
     const playerNames: Record<string, string> = {};
     for (const pid of selectedPlayerIds) {
+      if (pid === GUEST_PLAYER_ID) { playerNames[pid] = 'Gast'; continue; }
       const p = players.find(x => x.id === pid);
       if (p) playerNames[pid] = p.nickname || p.name;
     }
+    const firstNonGuest = players.find(p => p.id === selectedPlayerIds[0]);
     startSession({
       playerIds: selectedPlayerIds,
       playerNames,
       count,
       order,
-      weakestFirst,
-      preferredDoubles: firstPlayer?.preferredDoubles ?? {},
+      weakestFirst: weakestFirst && !selectedPlayerIds.includes(GUEST_PLAYER_ID),
+      preferredDoubles: firstNonGuest?.preferredDoubles ?? {},
     });
     navigate('/dubbels/spel');
   };
@@ -78,9 +81,28 @@ export function DoublesSetupScreen() {
                 </button>
               );
             })}
-            {players.length === 0 && (
-              <p className="text-text-secondary text-sm text-center py-4">Geen spelers gevonden</p>
+            {/* Scheidslijn */}
+            {players.length > 0 && (
+              <div className="flex items-center gap-3 py-1">
+                <div className="flex-1 h-px bg-surface2" />
+                <span className="text-text-secondary text-xs">of</span>
+                <div className="flex-1 h-px bg-surface2" />
+              </div>
             )}
+
+            {/* Gast */}
+            <button
+              onPointerDown={() => togglePlayer(GUEST_PLAYER_ID)}
+              className={`w-full rounded-2xl p-4 flex items-center gap-3 touch-manipulation border-2 border-dashed transition-colors ${
+                selectedPlayerIds.includes(GUEST_PLAYER_ID) ? 'border-accent bg-accent/10' : 'border-surface2 bg-surface'
+              }`}
+            >
+              <div className="w-10 h-10 rounded-full bg-surface2 flex items-center justify-center text-xl shrink-0">
+                👤
+              </div>
+              <span className="text-text-primary font-semibold flex-1 text-left">Gast</span>
+              {selectedPlayerIds.includes(GUEST_PLAYER_ID) && <Check size={18} className="text-accent shrink-0" />}
+            </button>
           </div>
         </motion.div>
 

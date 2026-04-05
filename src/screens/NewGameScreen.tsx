@@ -6,7 +6,7 @@ import { useGameStore } from '../store/gameStore';
 import { PlayerAvatar } from '../components/ui/PlayerAvatar';
 import { Button } from '../components/ui/Button';
 import { ArrowLeft, Plus, Check, Users, X } from 'lucide-react';
-import { GameType, GameFormat } from '../data/types';
+import { GameType, GameFormat, GUEST_PLAYER_ID } from '../data/types';
 
 const GAME_TYPES: { type: GameType; label: string; sub: string }[] = [
   { type: 'x01_501', label: '501', sub: 'Klassiek dartspel' },
@@ -201,6 +201,32 @@ export function NewGameScreen() {
                     </button>
                   );
                 })}
+
+                {/* Scheidslijn */}
+                {players.length > 0 && (
+                  <div className="flex items-center gap-3 py-1">
+                    <div className="flex-1 h-px bg-surface2" />
+                    <span className="text-text-secondary text-xs">of</span>
+                    <div className="flex-1 h-px bg-surface2" />
+                  </div>
+                )}
+
+                {/* Gast */}
+                <button
+                  onPointerDown={() => togglePlayer(GUEST_PLAYER_ID)}
+                  className={`w-full rounded-2xl p-4 flex items-center gap-4 touch-manipulation border-2 border-dashed transition-colors ${
+                    selectedPlayerIds.includes(GUEST_PLAYER_ID) ? 'border-accent bg-accent/10' : 'border-surface2 bg-surface'
+                  }`}
+                >
+                  <div className="w-10 h-10 rounded-full bg-surface2 flex items-center justify-center text-xl shrink-0">
+                    👤
+                  </div>
+                  <div className="flex-1 text-left">
+                    <p className="text-text-primary font-semibold">Gast</p>
+                    <p className="text-text-secondary text-xs">Stats worden niet opgeslagen</p>
+                  </div>
+                  {selectedPlayerIds.includes(GUEST_PLAYER_ID) && <Check size={20} className="text-accent" />}
+                </button>
               </div>
 
               {/* Teams toggle */}

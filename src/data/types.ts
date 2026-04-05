@@ -145,3 +145,24 @@ export const defaultStats = (): PlayerStats => ({
   cricketGamesPlayed: 0,
   cricketGamesWon: 0,
 });
+
+// ─── Gast-speler ─────────────────────────────────────────────────────────────
+export const GUEST_PLAYER_ID = '__guest__';
+
+/** Tijdelijk profiel voor een gast — nooit opgeslagen in Supabase. */
+export function guestPlayerProfile(): PlayerProfile {
+  return {
+    id: GUEST_PLAYER_ID,
+    name: 'Gast',
+    nickname: 'Gast',
+    createdAt: new Date().toISOString(),
+    stats: defaultStats(),
+    preferredDoubles: {},
+  };
+}
+
+/** Zoek speler op ID; geeft gastprofiel terug voor __guest__ en onbekende IDs. */
+export function resolvePlayer(id: string, players: PlayerProfile[]): PlayerProfile | undefined {
+  if (id === GUEST_PLAYER_ID) return guestPlayerProfile();
+  return players.find(p => p.id === id);
+}

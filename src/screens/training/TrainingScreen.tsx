@@ -120,10 +120,10 @@ function DrillCard({
   playerId: string;
   onPress: () => void;
 }) {
-  const playerHistory = useTrainingStore(s => s.history[playerId] ?? {});
-  const playerPRs = useTrainingStore(s => s.personalRecords[playerId] ?? {});
-  const history = (playerHistory[def.id] ?? []) as import('../../data/trainingTypes').DrillResult[];
-  const pr = playerPRs[def.id] as number | undefined;
+  const playerHistory = useTrainingStore(s => s.history[playerId]);
+  const playerPRs = useTrainingStore(s => s.personalRecords[playerId]);
+  const history = (playerHistory?.[def.id] ?? []) as import('../../data/trainingTypes').DrillResult[];
+  const pr = playerPRs?.[def.id] as number | undefined;
   const last = history[0];
 
   return (
@@ -170,8 +170,8 @@ function PillarProgress({
   playerId: string;
 }) {
   const drills = DRILL_DEFINITIONS.filter(d => d.category === category);
-  const playerHistory = useTrainingStore(s => s.history[playerId] ?? {});
-  const played = drills.filter(d => ((playerHistory[d.id] as unknown[]) ?? []).length > 0).length;
+  const playerHistory = useTrainingStore(s => s.history[playerId]);
+  const played = drills.filter(d => ((playerHistory?.[d.id] as unknown[]) ?? []).length > 0).length;
 
   return (
     <div className="flex-1">

@@ -109,16 +109,16 @@ export function DrillShell({ drillId, children }: DrillShellProps) {
   const players = useAppStore(s => s.players);
   const selectedPlayer = players.find(p => p.id === selectedPlayerId) ?? null;
 
-  // Per-speler data
+  // Per-speler data — geen ?? {} in selector (geeft nieuwe referentie elke render → infinite loop)
   const playerHistory = useTrainingStore(s =>
-    selectedPlayerId ? (s.history[selectedPlayerId] ?? {}) : {}
+    selectedPlayerId ? s.history[selectedPlayerId] : undefined
   );
   const playerPRs = useTrainingStore(s =>
-    selectedPlayerId ? (s.personalRecords[selectedPlayerId] ?? {}) : {}
+    selectedPlayerId ? s.personalRecords[selectedPlayerId] : undefined
   );
   const historyForDrill: import('../../data/trainingTypes').DrillResult[] =
-    (playerHistory[drillId] as import('../../data/trainingTypes').DrillResult[]) ?? [];
-  const pr: number | undefined = playerPRs[drillId] as number | undefined;
+    (playerHistory?.[drillId] as import('../../data/trainingTypes').DrillResult[]) ?? [];
+  const pr: number | undefined = playerPRs?.[drillId] as number | undefined;
 
   const scores = historyForDrill.map(r => r.score);
 

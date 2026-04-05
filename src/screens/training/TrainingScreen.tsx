@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Trophy, ChevronRight, Target, Crosshair, CheckCircle, User } from 'lucide-react';
+import { ArrowLeft, Trophy, ChevronRight, Target, Crosshair, CheckCircle, Check } from 'lucide-react';
 import { DRILL_DEFINITIONS, DrillCategory, DrillDefinition, LEVEL_LABELS, detectLevel } from '../../data/trainingTypes';
 import { useTrainingStore } from '../../store/trainingStore';
 import { useAppStore } from '../../store/appStore';
-import { getAverageFromStats } from '../../engine/statsEngine';
+import { getRecentAverageFromStats } from '../../engine/statsEngine';
 import { PlayerAvatar } from '../../components/ui/PlayerAvatar';
 
 const CATEGORY_LABELS: Record<DrillCategory, string> = {
@@ -16,10 +16,114 @@ const CATEGORY_LABELS: Record<DrillCategory, string> = {
 
 const CATEGORY_ORDER: DrillCategory[] = ['scoring', 'doubles', 'checkouts'];
 
-function DrillCard({ def, onPress }: { def: DrillDefinition; onPress: () => void }) {
-  const pr = useTrainingStore(s => s.personalRecords[def.id]);
-  const historyRaw = useTrainingStore(s => s.history[def.id]);
-  const history = historyRaw ?? [];
+// ─── Spelersselectiescherm ───────────────────────────────────────────────────
+
+function PlayerPicker({
+  onSelect,
+}: {
+  onSelect: (playerId: string) => void;
+}) {
+  const navigate = useNavigate();
+  const players = useAppStore(s => s.players);
+  const [picked, setPicked] = useState<string | null>(null);
+
+  const handleConfirm = () => {
+    if (picked) onSelect(picked);
+  };
+
+  return (
+    <div className="h-screen bg-background flex flex-col overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center gap-3 px-4 pt-8 pb-4 shrink-0">
+        <button onPointerDown={() => navigate('/')} className="p-2 touch-manipulation">
+          <ArrowLeft size={24} className="text-text-primary" />
+        </button>
+        <div className="flex-1">
+          <h1 className="text-2xl font-bold text-text-primary">Training</h1>
+          <p className="text-text-secondary text-sm">Wie gaat er trainen?</p>
+        </div>
+      </div>
+
+      {/* Spelerlijst */}
+      <div className="flex-1 overflow-y-auto px-4 pb-6 space-y-3">
+        {players.length === 0 && (
+          <div className="text-center text-text-secondary py-16">
+            <p className="text-lg">Nog geen spelers.</p>
+            <p className="text-sm mt-1">Maak eerst een speler aan via het hoofdmenu.</p>
+          </div>
+        )}
+        {players.map((p, i) => {
+          const avg = getRecentAverageFromStats(p.stats);
+          const level = detectLevel(avg);
+          const isSelected = picked === p.id;
+
+          return (
+            <motion.button
+              key={p.id}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.06 }}
+              onPointerDown={() => setPicked(p.id)}
+              className={`w-full rounded-2xl p-4 flex items-center gap-4 touch-manipulation transition-colors border-2 ${
+                isSelected
+                  ? 'bg-accent/10 border-accent'
+                  : 'bg-surface border-transparent'
+              }`}
+            >
+              <PlayerAvatar name={p.name} avatarUrl={p.avatarUrl} size="lg" />
+              <div className="flex-1 text-left">
+                <p className="text-text-primary font-bold text-lg">
+                  {p.nickname || p.name}
+                </p>
+                <p className="text-text-secondary text-xs">
+                  Niveau {level} · {LEVEL_LABELS[level - 1]}
+                  {avg > 0 && <span className="ml-1">· gem. {avg.toFixed(1)}</span>}
+                </p>
+              </div>
+              {isSelected && (
+                <div className="w-7 h-7 rounded-full bg-accent flex items-center justify-center shrink-0">
+                  <Check size={16} className="text-black" />
+                </div>
+              )}
+            </motion.button>
+          );
+        })}
+      </div>
+
+      {/* Start-knop */}
+      {picked && (
+        <motion.div
+          className="px-4 pb-8 shrink-0"
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <button
+            onPointerDown={handleConfirm}
+            className="w-full bg-accent rounded-2xl py-4 text-black font-black text-lg touch-manipulation active:scale-95 transition-transform"
+          >
+            Start Training →
+          </button>
+        </motion.div>
+      )}
+    </div>
+  );
+}
+
+// ─── Drill card ───────────────────────────────────────────────────────────────
+
+function DrillCard({
+  def,
+  playerId,
+  onPress,
+}: {
+  def: DrillDefinition;
+  playerId: string;
+  onPress: () => void;
+}) {
+  const playerHistory = useTrainingStore(s => s.history[playerId] ?? {});
+  const playerPRs = useTrainingStore(s => s.personalRecords[playerId] ?? {});
+  const history = (playerHistory[def.id] ?? []) as import('../../data/trainingTypes').DrillResult[];
+  const pr = playerPRs[def.id] as number | undefined;
   const last = history[0];
 
   return (
@@ -56,9 +160,18 @@ function DrillCard({ def, onPress }: { def: DrillDefinition; onPress: () => void
   );
 }
 
-function PillarProgress({ category, allHistory }: { category: DrillCategory; allHistory: Record<string, unknown[]> }) {
+// ─── Pijler-voortgang ─────────────────────────────────────────────────────────
+
+function PillarProgress({
+  category,
+  playerId,
+}: {
+  category: DrillCategory;
+  playerId: string;
+}) {
   const drills = DRILL_DEFINITIONS.filter(d => d.category === category);
-  const played = drills.filter(d => (allHistory[d.id]?.length ?? 0) > 0).length;
+  const playerHistory = useTrainingStore(s => s.history[playerId] ?? {});
+  const played = drills.filter(d => ((playerHistory[d.id] as unknown[]) ?? []).length > 0).length;
 
   return (
     <div className="flex-1">
@@ -76,20 +189,17 @@ function PillarProgress({ category, allHistory }: { category: DrillCategory; all
   );
 }
 
-export function TrainingScreen() {
+// ─── Trainingsoverzicht ────────────────────────────────────────────────────────
+
+function TrainingContent({ playerId }: { playerId: string }) {
   const navigate = useNavigate();
   const players = useAppStore(s => s.players);
-  const allHistory = useTrainingStore(s => s.history);
-  const selectedPlayerId = useTrainingStore(s => s.selectedPlayerId);
   const setSelectedPlayerId = useTrainingStore(s => s.setSelectedPlayerId);
   const [activeCategory, setActiveCategory] = useState<DrillCategory | 'all'>('all');
 
-  // Determine level from selected player, or best avg if none selected
-  const selectedPlayer = players.find(p => p.id === selectedPlayerId) ?? null;
-  const avgForLevel = selectedPlayer
-    ? getAverageFromStats(selectedPlayer.stats)
-    : (players.length > 0 ? Math.max(...players.map(p => getAverageFromStats(p.stats))) : 0);
-  const level = detectLevel(avgForLevel);
+  const player = players.find(p => p.id === playerId);
+  const avg = player ? getRecentAverageFromStats(player.stats) : 0;
+  const level = detectLevel(avg);
   const levelLabel = LEVEL_LABELS[level - 1];
 
   const drillsToShow = activeCategory === 'all'
@@ -106,58 +216,34 @@ export function TrainingScreen() {
     <div className="h-screen bg-background flex flex-col overflow-hidden">
       {/* Header */}
       <div className="flex items-center gap-3 px-4 pt-8 pb-3 shrink-0">
-        <button onPointerDown={() => navigate('/')} className="p-2 touch-manipulation">
+        {/* Speler wisselen */}
+        <button
+          onPointerDown={() => setSelectedPlayerId(null)}
+          className="p-2 touch-manipulation"
+        >
           <ArrowLeft size={24} className="text-text-primary" />
         </button>
-        <h1 className="text-2xl font-bold text-text-primary flex-1">Training</h1>
+        <div className="flex-1">
+          <h1 className="text-xl font-bold text-text-primary">
+            {player ? (player.nickname || player.name) : 'Training'}
+          </h1>
+          {avg > 0 && (
+            <p className="text-text-secondary text-xs">
+              gem. {avg.toFixed(1)} (laatste {Math.min(player?.stats.recentGameAverages?.length ?? 0, 20)} potjes)
+            </p>
+          )}
+        </div>
         <div className="bg-surface rounded-xl px-3 py-1.5 flex items-center gap-1.5">
           <Target size={14} className="text-accent" />
           <span className="text-accent text-sm font-bold">Lvl {level} · {levelLabel}</span>
         </div>
       </div>
 
-      {/* Spelerkiezer */}
-      {players.length > 0 && (
-        <div className="px-4 pb-3 shrink-0">
-          <p className="text-text-secondary text-xs font-semibold uppercase tracking-wider mb-2 flex items-center gap-1">
-            <User size={11} />
-            Wie gaat trainen?
-          </p>
-          <div className="flex gap-2 overflow-x-auto pb-1">
-            {players.map(p => {
-              const isSelected = p.id === selectedPlayerId;
-              const avg = getAverageFromStats(p.stats);
-              const lvl = detectLevel(avg);
-              return (
-                <button
-                  key={p.id}
-                  onPointerDown={() => setSelectedPlayerId(isSelected ? null : p.id)}
-                  className={`flex flex-col items-center gap-1.5 px-3 py-2 rounded-2xl shrink-0 touch-manipulation transition-colors ${
-                    isSelected ? 'bg-accent/20 border-2 border-accent' : 'bg-surface border-2 border-transparent'
-                  }`}
-                >
-                  <PlayerAvatar name={p.name} avatarUrl={p.avatarUrl} size="sm" />
-                  <span className={`text-xs font-semibold whitespace-nowrap ${isSelected ? 'text-accent' : 'text-text-primary'}`}>
-                    {p.nickname || p.name}
-                  </span>
-                  <span className="text-[10px] text-text-secondary">Lvl {lvl}</span>
-                </button>
-              );
-            })}
-          </div>
-          {selectedPlayer && (
-            <p className="text-text-secondary text-xs mt-1.5">
-              Niveau aangepast op {selectedPlayer.nickname || selectedPlayer.name} · gem. {avgForLevel.toFixed(1)}
-            </p>
-          )}
-        </div>
-      )}
-
       {/* Pijler-voortgang */}
       <div className="px-4 pb-3 shrink-0">
         <div className="bg-surface rounded-2xl p-3 flex gap-3">
           {CATEGORY_ORDER.map(cat => (
-            <PillarProgress key={cat} category={cat} allHistory={allHistory as Record<string, unknown[]>} />
+            <PillarProgress key={cat} category={cat} playerId={playerId} />
           ))}
         </div>
       </div>
@@ -213,7 +299,11 @@ export function TrainingScreen() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.04 }}
                   >
-                    <DrillCard def={def} onPress={() => navigate(`/training/drill/${def.id}`)} />
+                    <DrillCard
+                      def={def}
+                      playerId={playerId}
+                      onPress={() => navigate(`/training/drill/${def.id}`)}
+                    />
                   </motion.div>
                 ))}
               </div>
@@ -223,4 +313,17 @@ export function TrainingScreen() {
       </div>
     </div>
   );
+}
+
+// ─── Hoofd-export ─────────────────────────────────────────────────────────────
+
+export function TrainingScreen() {
+  const selectedPlayerId = useTrainingStore(s => s.selectedPlayerId);
+  const setSelectedPlayerId = useTrainingStore(s => s.setSelectedPlayerId);
+
+  if (!selectedPlayerId) {
+    return <PlayerPicker onSelect={setSelectedPlayerId} />;
+  }
+
+  return <TrainingContent playerId={selectedPlayerId} />;
 }

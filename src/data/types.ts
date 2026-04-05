@@ -31,6 +31,7 @@ export interface PlayerStats {
   bestLegDarts: number;
   bestGameAverage: number;
   worstGameAverage: number;
+  recentGameAverages: number[]; // laatste ≤20 X01-potje-gemiddelden, meest recent eerst
   cricketGamesPlayed: number;
   cricketGamesWon: number;
 }
@@ -140,6 +141,7 @@ export const defaultStats = (): PlayerStats => ({
   bestLegDarts: 0,
   bestGameAverage: 0,
   worstGameAverage: 0,
+  recentGameAverages: [],
   cricketGamesPlayed: 0,
   cricketGamesWon: 0,
 });

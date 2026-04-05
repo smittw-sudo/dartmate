@@ -31,9 +31,12 @@ export interface DrillResult {
   metadata?: Record<string, number>;
 }
 
+/** Per-speler trainingsgeschiedenis en persoonlijke records */
 export interface TrainingState {
-  history: Record<DrillId, DrillResult[]>; // max 20 per drill
-  personalRecords: Record<DrillId, number>;
+  /** history[playerId][drillId] = laatste ≤20 resultaten */
+  history: Record<string, Record<string, DrillResult[]>>;
+  /** personalRecords[playerId][drillId] = beste score */
+  personalRecords: Record<string, Record<string, number>>;
   badges: string[];
 }
 

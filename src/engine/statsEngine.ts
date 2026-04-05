@@ -130,6 +130,9 @@ export function updateStatsAfterGame(
     if (stats.worstGameAverage === 0 || gameAvg < stats.worstGameAverage) {
       stats.worstGameAverage = gameAvg;
     }
+    // Rolling window: sla de laatste 20 potje-gemiddelden op
+    const recent = [gameAvg, ...(stats.recentGameAverages ?? [])].slice(0, 20);
+    stats.recentGameAverages = recent;
   }
 
   // Broken check: was this player firstPlayerThisGame but lost?
@@ -155,6 +158,15 @@ export function getWinPercentage(stats: PlayerStats): number {
 
 export function getAverageFromStats(stats: PlayerStats): number {
   return calculateAverage(stats.totalScored, stats.totalDartsThrown);
+}
+
+/** Gemiddelde gebaseerd op de laatste ≤20 potjes — geeft reële huidige vorm weer.
+ *  Valt terug op carrière-gemiddelde als er nog geen recente data is. */
+export function getRecentAverageFromStats(stats: PlayerStats): number {
+  const recent = stats.recentGameAverages;
+  if (!recent || recent.length === 0) return getAverageFromStats(stats);
+  const sum = recent.reduce((a, b) => a + b, 0);
+  return Math.round((sum / recent.length) * 10) / 10;
 }
 
 export function getTopDoubles(

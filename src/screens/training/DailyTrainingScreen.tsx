@@ -4,7 +4,7 @@ import { ArrowLeft, ChevronRight, Clock } from 'lucide-react';
 import { DRILL_DEFINITIONS, DrillId, detectLevel, LEVEL_LABELS } from '../../data/trainingTypes';
 import { useAppStore } from '../../store/appStore';
 import { useTrainingStore } from '../../store/trainingStore';
-import { getAverageFromStats } from '../../engine/statsEngine';
+import { getRecentAverageFromStats } from '../../engine/statsEngine';
 
 interface SessionDrill { id: DrillId; duration: number; note: string; }
 
@@ -28,8 +28,8 @@ export function DailyTrainingScreen() {
 
   const selectedPlayer = players.find(p => p.id === selectedPlayerId) ?? null;
   const avgForLevel = selectedPlayer
-    ? getAverageFromStats(selectedPlayer.stats)
-    : (players.length > 0 ? Math.max(...players.map(p => getAverageFromStats(p.stats))) : 0);
+    ? getRecentAverageFromStats(selectedPlayer.stats)
+    : (players.length > 0 ? Math.max(...players.map(p => getRecentAverageFromStats(p.stats))) : 0);
   const level = detectLevel(avgForLevel);
   const session = buildDailySession(level);
   const totalMin = session.reduce((a, s) => a + s.duration, 0);

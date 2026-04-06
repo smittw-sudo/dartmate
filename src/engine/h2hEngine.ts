@@ -60,7 +60,7 @@ export function getStandings(
   games: GameRecord[],
   playerIds: string[],
 ): StandingsRow[] {
-  const x01 = games.filter(g => g.gameType !== 'cricket' && g.isComplete);
+  const x01 = games.filter(g => g.gameType !== 'cricket' && g.isComplete && g.countForH2H !== false);
 
   return playerIds
     .map(pid => {
@@ -95,7 +95,7 @@ export function getCricketStandings(
   games: GameRecord[],
   playerIds: string[],
 ): StandingsRow[] {
-  const cricket = games.filter(g => g.gameType === 'cricket' && g.isComplete && g.playerIds.length >= 2);
+  const cricket = games.filter(g => g.gameType === 'cricket' && g.isComplete && g.playerIds.length >= 2 && g.countForH2H !== false);
 
   return playerIds
     .map(pid => {
@@ -122,7 +122,7 @@ export function getCricketH2HRecords(
   games: GameRecord[],
   playerIds: string[],
 ): H2HRecord[] {
-  const cricket = games.filter(g => g.gameType === 'cricket' && g.isComplete);
+  const cricket = games.filter(g => g.gameType === 'cricket' && g.isComplete && g.countForH2H !== false);
   const records: H2HRecord[] = [];
 
   for (let i = 0; i < playerIds.length; i++) {
@@ -159,7 +159,7 @@ export function getH2HRecords(
   games: GameRecord[],
   playerIds: string[],
 ): H2HRecord[] {
-  const x01 = games.filter(g => g.gameType !== 'cricket' && g.isComplete);
+  const x01 = games.filter(g => g.gameType !== 'cricket' && g.isComplete && g.countForH2H !== false);
   const records: H2HRecord[] = [];
 
   for (let i = 0; i < playerIds.length; i++) {

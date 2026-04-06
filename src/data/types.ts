@@ -76,6 +76,8 @@ export interface GameRecord {
   pausedState: ActiveGameState | null;
   legsToWinSet: number;
   setsToWin: number;
+  /** false = oefenpotje: telt voor persoonlijke stats maar NIET voor onderlinge stand/H2H */
+  countForH2H?: boolean;
 }
 
 export interface ActiveGameState {

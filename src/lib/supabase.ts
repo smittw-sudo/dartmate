@@ -104,6 +104,7 @@ export async function upsertGame(game: GameRecord): Promise<void> {
     is_complete: game.isComplete,
     legs_to_win_set: game.legsToWinSet,
     sets_to_win: game.setsToWin,
+    count_for_h2h: game.countForH2H ?? true,
   });
   if (error) throw error;
 }
@@ -124,7 +125,17 @@ function rowToGame(row: Record<string, unknown>): GameRecord {
     pausedState: null,
     legsToWinSet: row.legs_to_win_set as number,
     setsToWin: row.sets_to_win as number,
+    countForH2H: (row.count_for_h2h as boolean | null) ?? true,
   };
+}
+
+/** Pas alleen de H2H-vlag aan van een bestaand potje */
+export async function updateGameH2HFlag(gameId: string, countForH2H: boolean): Promise<void> {
+  const { error } = await supabase
+    .from('games')
+    .update({ count_for_h2h: countForH2H })
+    .eq('id', gameId);
+  if (error) throw error;
 }
 
 // ── Paused games ─────────────────────────────────────────────────────────────

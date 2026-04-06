@@ -15,6 +15,7 @@ import { LegWonAnimation } from '../components/animations/LegWonAnimation';
 import { Button } from '../components/ui/Button';
 import { Pause, RotateCcw, Settings } from 'lucide-react';
 import { calculateAverage, getAverageFromStats } from '../engine/statsEngine';
+import { resolvePlayer } from '../data/types';
 
 export function ActiveGameScreen() {
   const navigate = useNavigate();
@@ -58,9 +59,20 @@ export function ActiveGameScreen() {
   };
 
   const getAverage = (playerId: string) => {
-    const visits = getPlayerVisits(playerId);
-    const scored = visits.filter(v => !v.isBust).reduce((s, v) => s + v.totalScore, 0);
-    const darts = visits.reduce((s, v) => s + (v.dartsCount ?? v.darts.length), 0);
+    // Inclusief afgeronde legs — consistent met het opgeslagen game-gemiddelde
+    let scored = 0;
+    let darts = 0;
+    for (const leg of completedLegs) {
+      for (const v of leg.visits) {
+        if (v.playerId !== playerId) continue;
+        if (!v.isBust) scored += v.totalScore;
+        darts += v.dartsCount ?? v.darts.length;
+      }
+    }
+    for (const v of game.visits.filter(v => v.playerId === playerId)) {
+      if (!v.isBust) scored += v.totalScore;
+      darts += v.dartsCount ?? v.darts.length;
+    }
     if (darts === 0) return 0;
     return calculateAverage(scored, darts);
   };
@@ -88,9 +100,9 @@ export function ActiveGameScreen() {
     game.gameType === 'x01_501' ? '501' :
     game.gameType === 'x01_301' ? '301' : '101';
 
-  const animationPlayer = players.find(p => p.id === animationData);
+  const animationPlayer = resolvePlayer(animationData ?? '', players);
   const displayName = (pid: string) => {
-    const p = players.find(x => x.id === pid);
+    const p = resolvePlayer(pid, players);
     return p?.nickname || p?.name || '?';
   };
 
@@ -159,7 +171,7 @@ export function ActiveGameScreen() {
       {/* Player cards */}
       <div className="flex gap-2 px-3 py-2 shrink-0 overflow-x-auto">
         {game.playerIds.map(pid => {
-          const player = players.find(p => p.id === pid);
+          const player = resolvePlayer(pid, players);
           const isCurrent = pid === currentPlayerId;
           const score = game.scores[pid];
           const avg = getAverage(pid);

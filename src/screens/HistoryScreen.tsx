@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { useHistory } from '../hooks/useHistory';
 import { useAppStore } from '../store/appStore';
 import { ArrowLeft, ChevronDown, ChevronUp, Trophy, Clock, Trash2, AlertCircle } from 'lucide-react';
-import { GameRecord } from '../data/types';
+import { GameRecord, resolvePlayer } from '../data/types';
 import { deleteGame } from '../lib/supabase';
 import { rebuildPlayerStats, getGameAverage } from '../engine/statsEngine';
 
@@ -26,7 +26,7 @@ function GameCard({
   const [expanded, setExpanded] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
-  const winner = players.find(p => p.id === game.winnerId);
+  const winner = game.winnerId ? resolvePlayer(game.winnerId, players) : undefined;
   const gameLabel =
     game.gameType === 'cricket' ? 'Cricket' :
     game.gameType === 'x01_501' ? '501' :
@@ -60,7 +60,7 @@ function GameCard({
             </div>
             <div className="text-text-secondary text-sm">
               {game.playerIds.map((pid, i) => {
-                const name = players.find(p => p.id === pid)?.name ?? '?';
+                const name = resolvePlayer(pid, players)?.name ?? '?';
                 if (game.gameType === 'cricket') return (
                   <span key={pid}>{i > 0 ? ' vs ' : ''}{name}</span>
                 );
@@ -116,7 +116,7 @@ function GameCard({
               <div key={i} className="bg-surface2 rounded-xl p-3">
                 <div className="text-text-secondary text-xs mb-2">Leg {leg.legNumber}</div>
                 {leg.visits.map((v, j) => {
-                  const p = players.find(x => x.id === v.playerId);
+                  const p = resolvePlayer(v.playerId, players);
                   return (
                     <div key={j} className="flex justify-between text-sm">
                       <span className="text-text-secondary">{p?.name}</span>
